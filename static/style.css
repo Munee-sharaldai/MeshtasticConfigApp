@@ -1,12 +1,125 @@
-/* Добавляем стили для чекбоксов и секций */
-.card h3 {
-    color: #007bff;
-    font-size: 16px;
-    margin: 20px 0 10px 0;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #eee;
+/* === Базовые стили === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* === Карточки === */
+.card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.card h2 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
 }
 
+/* === Форма добавления === */
+.form-inline {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.form-inline input, .form-inline select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 150px;
+}
+.form-inline input[disabled], .form-inline select[disabled] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+/* === Кнопки === */
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+.btn-primary { background: #007bff; color: white; }
+.btn-primary:hover { background: #0056b3; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-secondary:hover { background: #545b62; }
+.btn-warning { background: #ffc107; color: #212529; }
+.btn-warning:hover { background: #e0a800; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-danger:hover { background: #c82333; }
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin-right: 5px;
+}
+
+/* === Список устройств === */
+.devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+.device-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    background: #fafafa;
+}
+.device-card.wifi { border-left: 4px solid #007bff; }
+.device-card.serial { border-left: 4px solid #28a745; }
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.badge {
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+.device-info {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+.device-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* === Форма конфигурации (упрощённая) === */
+#configForm {
+    max-width: 500px;
+}
+.config-info {
+    background: #e7f3ff;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 3px solid #007bff;
+}
+.config-info .hint {
+    font-size: 13px;
+    color: #555;
+    margin-top: 5px;
+}
+.form-row {
+    margin-bottom: 15px;
+}
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -15,18 +128,89 @@
     padding: 10px;
     background: #f8f9fa;
     border-radius: 4px;
+    user-select: none;
 }
-
 .checkbox-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     cursor: pointer;
 }
 
-.form-row {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
+/* === Статус-индикаторы === */
+.status-indicator {
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-flex;
     align-items: center;
+    gap: 5px;
+}
+.status-indicator.status-ok {
+    background: #d4edda;
+    color: #155724;
+}
+.status-indicator.status-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 10px 0;
+}
+.status-badge.status-on {
+    background: #d4edda;
+    color: #155724;
+}
+.status-badge.status-off {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* === Логи === */
+.logs-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+    background: #fafafa;
+}
+.log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+.log-item:last-child { border-bottom: none; }
+.log-size {
+    font-size: 12px;
+    color: #888;
+    margin: 0 15px;
+}
+
+/* === Утилиты === */
+.error-message {
+    color: #721c24;
+    background: #f8d7da;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+.no-devices, .no-logs {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+}
+
+/* === Адаптив === */
+@media (max-width: 768px) {
+    .form-inline { flex-direction: column; align-items: stretch; }
+    .form-inline input, .form-inline select { width: 100%; }
+    .devices-grid { grid-template-columns: 1fr; }
+    .device-actions { justify-content: center; }
 }

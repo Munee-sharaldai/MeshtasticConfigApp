@@ -1,37 +1,26 @@
 // /opt/meshtastic-manager/static/script.js
-
 const API_BASE = '/api';
 
-// ============================================================================
-// Инициализация при загрузке страницы
-// ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('✅ DOM загружен, инициализация...');
+    console.log('✅ DOM загружен');
     
     fetchDevices();
     refreshLogs();
     toggleConnectionFields();
     updateHealthStatus();
     
-    // Привязка обработчика формы добавления устройства
+    // Обработчики форм
     const addForm = document.getElementById('addDeviceForm');
     if (addForm) {
-        console.log('✅ Форма добавления найдена');
         addForm.addEventListener('submit', handleAddDevice);
-    } else {
-        console.error('❌ Форма addDeviceForm не найдена!');
     }
     
-    // Привязка обработчика формы конфигурации
     const configForm = document.getElementById('configForm');
     if (configForm) {
-        console.log('✅ Форма конфигурации найдена');
         configForm.addEventListener('submit', handleConfigSubmit);
-    } else {
-        console.error('❌ Форма configForm не найдена!');
     }
     
-    // Обработчик чекбокса Range Test
+    // Индикатор статуса Range Test
     const rangeTestCheckbox = document.getElementById('rangeTestEnabled');
     if (rangeTestCheckbox) {
         rangeTestCheckbox.addEventListener('change', (e) => {
@@ -39,12 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Автообновление статуса
     setInterval(updateHealthStatus, 30000);
 });
 
 // ============================================================================
-// Работа с устройствами
+// Устройства
 // ============================================================================
 
 async function fetchDevices() {
@@ -56,28 +44,27 @@ async function fetchDevices() {
     } catch (e) {
         console.error('❌ Ошибка загрузки устройств:', e);
         document.getElementById('devicesList').innerHTML = 
-            '<div class="error-message">❌ Ошибка загрузки устройств</div>';
+            '<div class="error-message">❌ Ошибка загрузки</div>';
     }
 }
 
 function renderDevices(devices) {
     const container = document.getElementById('devicesList');
     
-    if (!devices || devices.length === 0) {
-        container.innerHTML = '<div class="no-devices">Нет добавленных устройств</div>';
+    if (!devices?.length) {
+        container.innerHTML = '<div class="no-devices">Нет устройств</div>';
         return;
     }
     
     container.innerHTML = devices.map(d => {
         const identifier = d.connection_type === 'wifi' ? d.ip : d.serial_port;
-        const connectionBadge = d.connection_type === 'wifi' ? '📶 WiFi' : '🔌 Serial';
-        const connectionClass = d.connection_type === 'wifi' ? 'wifi' : 'serial';
+        const badge = d.connection_type === 'wifi' ? '📶 WiFi' : '🔌 Serial';
         
         return `
-        <div class="device-card ${connectionClass}">
+        <div class="device-card ${d.connection_type}">
             <div class="device-header">
                 <strong>${escapeHtml(d.name)}</strong>
-                <span class="badge">${connectionBadge}</span>
+                <span class="badge">${badge}</span>
             </div>
             <div class="device-info">
                 ${d.connection_type === 'wifi' ? `IP: ${escapeHtml(d.ip)}` : `Порт: ${escapeHtml(d.serial_port)}`}<br>
@@ -86,14 +73,13 @@ function renderDevices(devices) {
             </div>
             <div class="device-actions">
                 <button class="btn-small" onclick="checkStatus('${escapeHtml(identifier)}')">Статус</button>
-                <button class="btn-small" onclick="selectConfig('${escapeHtml(identifier)}')">Настроить</button>
-                <button class="btn-small" onclick="exportLog('${escapeHtml(identifier)}')">Лог</button>
-                <button class="btn-small" onclick="sendMessage('${escapeHtml(identifier)}')">SMS</button>
+                <button class="btn-small" onclick="selectConfig('${escapeHtml(identifier)}')">⚙️ Range Test</button>
+                <button class="btn-small" onclick="exportLog('${escapeHtml(identifier)}')">📥 Лог</button>
                 <button class="btn-small btn-warning" onclick="reboot('${escapeHtml(identifier)}')">Reboot</button>
-                <button class="btn-small btn-danger" onclick="deleteDevice('${escapeHtml(identifier)}')">Удалить</button>
+                <button class="btn-small btn-danger" onclick="deleteDevice('${escapeHtml(identifier)}')">🗑️</button>
             </div>
-        </div>
-    `}).join('');
+        </div>`;
+    }).join('');
 }
 
 // ============================================================================
@@ -110,7 +96,6 @@ function toggleConnectionFields() {
     if (type === 'wifi') {
         ipField.disabled = false;
         ipField.required = true;
-        ipField.placeholder = 'IP адрес (192.168.x.x)';
         serialField.disabled = true;
         serialField.required = false;
         serialField.value = '';
@@ -118,7 +103,6 @@ function toggleConnectionFields() {
         ipField.disabled = true;
         ipField.required = false;
         ipField.value = '';
-        ipField.placeholder = '';
         serialField.disabled = false;
         serialField.required = true;
         refreshSerialPorts();
@@ -139,7 +123,6 @@ async function refreshSerialPorts() {
 
 async function handleAddDevice(e) {
     e.preventDefault();
-    console.log('📝 Отправка формы добавления устройства...');
     
     const connectionType = document.getElementById('devConnectionType').value;
     const data = {
@@ -151,23 +134,18 @@ async function handleAddDevice(e) {
         description: document.getElementById('devDescription')?.value?.trim() || ''
     };
     
-    // Валидация
     if (!data.name || !data.node_id) {
         alert('❌ Заполните название и Node ID');
         return;
     }
-    
     if (connectionType === 'wifi' && !data.ip) {
-        alert('❌ Укажите IP адрес для WiFi подключения');
+        alert('❌ Укажите IP для WiFi');
         return;
     }
-    
     if (connectionType === 'serial' && !data.serial_port) {
-        alert('❌ Выберите COM-порт для Serial подключения');
+        alert('❌ Выберите COM-порт');
         return;
     }
-    
-    console.log('📦 Отправляемые данные:', data);
     
     try {
         const res = await fetch(`${API_BASE}/devices`, {
@@ -175,141 +153,98 @@ async function handleAddDevice(e) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
-        
         const result = await res.json();
-        console.log('📥 Ответ сервера:', result);
         
         if (res.ok) {
-            alert('✅ Устройство добавлено: ' + result.message);
+            alert('✅ ' + result.message);
             document.getElementById('addDeviceForm').reset();
             fetchDevices();
             toggleConnectionFields();
         } else {
-            alert('❌ Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+            alert('❌ ' + (result.detail || 'Ошибка'));
         }
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ Ошибка: ' + e.message);
     }
 }
 
 // ============================================================================
-// Конфигурация устройства (ПОЛНАЯ ЛОГИКА)
+// Конфигурация: только Range Test
 // ============================================================================
 
 async function loadDeviceConfig(identifier) {
-    console.log('📥 Загрузка конфигурации для:', identifier);
+    console.log('📥 Загрузка config для:', identifier);
     
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/status`);
         const data = await res.json();
-        
-        // Значения по умолчанию
-        let posInterval = 300;
-        let gpsInterval = 30;
-        let powerWaitSecs = 60;
-        let txPower = 20;
-        let modemPreset = 'LONG_MODERATE';
+        console.log(data);
+        // Значение по умолчанию
         let rangeTestEnabled = false;
         
+        // Извлекаем из ответа (структура зависит от типа подключения)
         if (data.success && data.data) {
-            console.log('📊 Получены данные:', data.data);
-            
-            // Позиция
-            if (data.data.position) {
-                posInterval = data.data.position.position_broadcast_secs || posInterval;
-                gpsInterval = data.data.position.gps_update_interval || gpsInterval;
-            }
-            // Питание
-            if (data.data.power) {
-                powerWaitSecs = data.data.power.wait_bluetooth_secs || powerWaitSecs;
-            }
-            // LoRa
-            if (data.data.lora) {
-                txPower = data.data.lora.tx_power || txPower;
-                modemPreset = data.data.lora.modem_preset || modemPreset;
-            }
-            // Range Test
+            // WiFi: module_config.range_test.enabled
             if (data.data.module_config?.range_test?.enabled !== undefined) {
                 rangeTestEnabled = data.data.module_config.range_test.enabled;
             }
+            // Serial: может быть в других полях, проверяем
+            else if (data.data.range_test_enabled !== undefined) {
+                rangeTestEnabled = data.data.range_test_enabled;
+            }
         }
         
-        // Заполняем форму
-        document.getElementById('posInterval').value = posInterval;
-        document.getElementById('gpsInterval').value = gpsInterval;
-        document.getElementById('powerWaitSecs').value = powerWaitSecs;
-        document.getElementById('txPower').value = txPower;
-        document.getElementById('modemPreset').value = modemPreset;
+        // Применяем к форме
         document.getElementById('rangeTestEnabled').checked = rangeTestEnabled;
-        
-        // Обновляем визуальный индикатор
         updateRangeTestIndicator(rangeTestEnabled);
         
-        console.log('✅ Конфигурация загружена');
-        
+        console.log('✅ Config загружен: range_test =', rangeTestEnabled);
     } catch (e) {
         console.error('❌ Ошибка загрузки конфига:', e);
-        // При ошибке используем значения по умолчанию
         updateRangeTestIndicator(false);
     }
 }
 
 function updateRangeTestIndicator(isEnabled) {
-    const statusEl = document.getElementById('rangeTestStatus');
-    if (statusEl) {
-        statusEl.textContent = isEnabled ? 'true' : 'false';
-        statusEl.className = `status-badge ${isEnabled ? 'status-on' : 'status-off'}`;
+    const el = document.getElementById('rangeTestStatus');
+    if (el) {
+        el.textContent = isEnabled ? '✓ Включено' : '✗ Выключено';
+        el.className = `status-badge ${isEnabled ? 'status-on' : 'status-off'}`;
     }
 }
 
 async function selectConfig(identifier) {
     if (!identifier) {
-        alert('❌ Не указано устройство');
+        alert('❌ Выберите устройство');
         return;
     }
     
-    console.log('⚙️ Выбор устройства для настройки:', identifier);
     document.getElementById('configIdentifier').value = identifier;
-    
-    // Загружаем текущие настройки перед показом формы
     await loadDeviceConfig(identifier);
-    
-    // Прокрутка к форме
     document.querySelector('#configForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function handleConfigSubmit(e) {
     e.preventDefault();
-    console.log('📝 Отправка конфигурации...');
     
     const identifier = document.getElementById('configIdentifier').value;
     if (!identifier) {
-        alert('❌ Выберите устройство');
+        alert('❌ Устройство не выбрано');
         return;
     }
     
-    // Собираем данные из формы
+    // Только одно поле
     const config = {
-        position_broadcast_secs: parseInt(document.getElementById('posInterval').value) || 300,
-        gps_update_interval: parseInt(document.getElementById('gpsInterval').value) || 30,
-        power_wait_bluetooth_secs: parseInt(document.getElementById('powerWaitSecs').value) || 60,
-        lora_tx_power: parseInt(document.getElementById('txPower').value) || 20,
-        lora_modem_preset: document.getElementById('modemPreset').value,
         range_test_enabled: document.getElementById('rangeTestEnabled').checked
     };
     
-    console.log('📦 Отправляемая конфигурация:', config);
+    console.log('📦 Отправка config:', config);
     
-    // Подтверждение
-    const confirmMsg = `Применить настройки для устройства?\n\n` +
-        `📍 Позиция: ${config.position_broadcast_secs} сек\n` +
-        `📡 LoRa: ${config.lora_modem_preset} (${config.lora_tx_power} dBm)\n` +
-        `🧪 Range Test: ${config.range_test_enabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+    const confirmMsg = `Применить настройку Range Test?\n\n` +
+        `Устройство: ${identifier}\n` +
+        `Состояние: ${config.range_test_enabled ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
     
-    if (!confirm(confirmMsg)) {
-        return;
-    }
+    if (!confirm(confirmMsg)) return;
     
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/configure`, {
@@ -317,154 +252,95 @@ async function handleConfigSubmit(e) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(config)
         });
-        
         const data = await res.json();
-        console.log('📥 Ответ сервера:', data);
         
         if (data.success) {
-            const rebootConfirm = confirm('✅ Настройки применены!\n\nПерезагрузить устройство сейчас?');
-            if (rebootConfirm) {
-                await reboot(identifier);
-            }
+            const msg = data.data?.message || 'Настройка применена';
+            const cliInfo = data.data?.cli_output ? `\n\n📋 Вывод:\n${data.data.cli_output}` : '';
+            
+            alert(`✅ ${msg}${cliInfo}\n\n🔄 Устройство автоматически перезагружается.`);
+            
+            // Обновляем статус через 5-7 секунд (после авто-ребута)
+            setTimeout(() => {
+                loadDeviceConfig(identifier);
+            }, 7000);
         } else {
-            alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            alert('❌ Ошибка: ' + (data.error || 'Неизвестная'));
         }
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ Ошибка: ' + e.message);
     }
 }
 
 // ============================================================================
-// Перезагрузка устройства
+// Перезагрузка / Удаление / Статус
 // ============================================================================
 
 async function reboot(identifier) {
-    if (!identifier) {
-        alert('❌ Не указано устройство');
-        return;
-    }
+    if (!identifier) return alert('❌ Не указано устройство');
     
-    console.log('🔄 Перезагрузка устройства:', identifier);
+    if (!confirm('⚠️ Перезагрузить устройство?')) return;
     
     try {
-        const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/reboot`, {
-            method: 'POST'
-        });
-        
+        const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/reboot`, { method: 'POST' });
         const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ Команда перезагрузки отправлена');
-        } else {
-            alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-        }
+        alert(data.success ? '✅ Перезагрузка отправлена' : '❌ ' + (data.error || 'Ошибка'));
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
-// ============================================================================
-// Удаление устройства
-// ============================================================================
-
 async function deleteDevice(identifier) {
-    if (!identifier) {
-        alert('❌ Не указано устройство');
-        return;
-    }
-    
-    if (!confirm('⚠️ Удалить устройство из списка?\n\nЭто не сбросит настройки самого устройства.')) {
-        return;
-    }
+    if (!identifier) return alert('❌ Не указано устройство');
+    if (!confirm('🗑️ Удалить устройство из списка?')) return;
     
     try {
-        const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}`, {
-            method: 'DELETE'
-        });
-        
+        const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
         if (res.ok) {
             fetchDevices();
         } else {
             const err = await res.json();
-            alert('❌ Ошибка: ' + (err.detail || 'Неизвестная ошибка'));
+            alert('❌ ' + (err.detail || 'Ошибка'));
         }
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
-// ============================================================================
-// Проверка статуса
-// ============================================================================
-
 async function checkStatus(identifier) {
-    if (!identifier) {
-        alert('❌ Не указано устройство');
-        return;
-    }
-    
-    console.log('🔍 Проверка статуса:', identifier);
+    if (!identifier) return alert('❌ Не указано устройство');
     
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/status`);
         const data = await res.json();
-        
-        if (data.success) {
-            let info = '✅ Устройство онлайн!\n\n';
-            if (data.data) {
-                info += JSON.stringify(data.data, null, 2);
-            }
-            alert(info);
-        } else {
-            alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-        }
+        alert(data.success ? '✅ Онлайн:\n' + JSON.stringify(data.data, null, 2) : '❌ ' + (data.error || 'Ошибка'));
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
 // ============================================================================
-// Отправка сообщений
+// Сообщения
 // ============================================================================
 
 async function sendMessage(identifier) {
-    if (!identifier) {
-        alert('❌ Не указано устройство');
-        return;
-    }
+    if (!identifier) return alert('❌ Не указано устройство');
     
-    const nodeId = prompt('Node ID получателя (например, !55c8278c):');
+    const nodeId = prompt('Node ID получателя (!xxxx):');
     if (!nodeId) return;
-    
-    const message = prompt('Текст сообщения:');
+    const message = prompt('Текст:');
     if (!message) return;
-    
-    console.log('💬 Отправка сообщения:', { to: nodeId, message });
     
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/message`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                node_id: nodeId,
-                message: message
-            })
+            body: JSON.stringify({ node_id: nodeId, message })
         });
-        
         const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ Сообщение отправлено');
-        } else {
-            alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-        }
+        alert(data.success ? '✅ Отправлено' : '❌ ' + (data.error || 'Ошибка'));
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
@@ -476,11 +352,10 @@ async function refreshLogs() {
     try {
         const res = await fetch(`${API_BASE}/logs`);
         const logs = await res.json();
-        
         const container = document.getElementById('logsList');
         
-        if (!logs || logs.length === 0) {
-            container.innerHTML = '<div class="no-logs">Нет сохранённых логов</div>';
+        if (!logs?.length) {
+            container.innerHTML = '<div class="no-logs">Нет логов</div>';
             return;
         }
         
@@ -488,38 +363,28 @@ async function refreshLogs() {
             <div class="log-item">
                 <span>📄 ${escapeHtml(l.filename)}</span>
                 <span class="log-size">${formatFileSize(l.size)}</span>
-                <a href="${API_BASE}/logs/${encodeURIComponent(l.filename)}" download class="btn-small">📥 Скачать</a>
+                <a href="${API_BASE}/logs/${encodeURIComponent(l.filename)}" download class="btn-small">📥</a>
             </div>
         `).join('');
     } catch (e) {
-        console.error('❌ Ошибка загрузки логов:', e);
+        console.error('❌ Ошибка логов:', e);
     }
 }
 
 async function exportLog(identifier) {
-    if (!identifier) {
-        alert('❌ Не указано устройство');
-        return;
-    }
-    
-    console.log('📤 Экспорт лога:', identifier);
+    if (!identifier) return alert('❌ Не указано устройство');
     
     try {
-        const res = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(identifier)}`, {
-            method: 'POST'
-        });
-        
+        const res = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(identifier)}`, { method: 'POST' });
         const data = await res.json();
-        
         if (data.status === 'success') {
-            alert(`✅ Лог сохранён: ${data.filename}`);
+            alert('✅ Сохранён: ' + data.filename);
             refreshLogs();
         } else {
-            alert('❌ Ошибка экспорта: ' + (data.detail || 'Неизвестная ошибка'));
+            alert('❌ ' + (data.detail || 'Ошибка'));
         }
     } catch (e) {
-        console.error('❌ Ошибка fetch:', e);
-        alert('❌ Ошибка соединения: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
@@ -527,65 +392,44 @@ async function exportAllLogs() {
     try {
         const res = await fetch(`${API_BASE}/devices`);
         const devices = await res.json();
+        if (!devices?.length) return alert('⚠️ Нет устройств');
         
-        if (!devices || devices.length === 0) {
-            alert('⚠️ Нет устройств для экспорта');
-            return;
-        }
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
+        let ok = 0, err = 0;
         for (const d of devices) {
-            const identifier = d.connection_type === 'wifi' ? d.ip : d.serial_port;
+            const id = d.connection_type === 'wifi' ? d.ip : d.serial_port;
             try {
-                const res = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(identifier)}`, {
-                    method: 'POST'
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    successCount++;
-                } else {
-                    errorCount++;
-                }
-            } catch (e) {
-                errorCount++;
-            }
+                const r = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(id)}`, { method: 'POST' });
+                const data = await r.json();
+                if (data.status === 'success') ok++; else err++;
+            } catch { err++; }
             await new Promise(r => setTimeout(r, 500));
         }
-        
-        alert(`✅ Экспорт завершён\nУспешно: ${successCount}\nОшибок: ${errorCount}`);
+        alert(`✅ Готово: ${ok} успешно, ${err} ошибок`);
         refreshLogs();
     } catch (e) {
-        console.error('❌ Ошибка:', e);
-        alert('❌ Ошибка: ' + e.message);
+        alert('❌ ' + e.message);
     }
 }
 
 // ============================================================================
-// Статус сервера
+// Статус сервера / Утилиты
 // ============================================================================
 
 async function updateHealthStatus() {
     try {
         const res = await fetch(`${API_BASE}/health`);
         const data = await res.json();
-        
-        const statusEl = document.getElementById('status');
-        statusEl.className = 'status-indicator status-ok';
-        statusEl.innerText = '● Онлайн';
-        statusEl.title = `Сервер: ${data.timestamp}`;
-    } catch (e) {
-        const statusEl = document.getElementById('status');
-        statusEl.className = 'status-indicator status-error';
-        statusEl.innerText = '● Ошибка';
-        statusEl.title = 'Сервер недоступен';
+        const el = document.getElementById('status');
+        el.className = 'status-indicator status-ok';
+        el.innerText = '● Онлайн';
+        el.title = `Обновлено: ${data.timestamp}`;
+    } catch {
+        const el = document.getElementById('status');
+        el.className = 'status-indicator status-error';
+        el.innerText = '● Ошибка';
+        el.title = 'Сервер недоступен';
     }
 }
-
-// ============================================================================
-// Утилиты
-// ============================================================================
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -595,9 +439,8 @@ function escapeHtml(text) {
 }
 
 function formatFileSize(bytes) {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    if (!bytes) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
 }
