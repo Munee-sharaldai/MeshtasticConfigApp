@@ -9,65 +9,62 @@
 <body>
     <div class="container">
         <header>
-            <h1>📡 Meshtastic Manager</h1>
+            <h1>Meshtastic Manager</h1>
             <div id="status" class="status-indicator">● Проверка...</div>
         </header>
 
         <!-- Форма добавления устройства -->
         <section class="card">
-            <h2>Добавить устройство</h2>
+            <h2>Форма добавления устройства</h2>
             <form id="addDeviceForm" class="form-inline">
                 <input type="text" id="devName" placeholder="Название" required>
+                <input type="text" id="devNodeId" placeholder="ID устройства" required>
+                <input type="text" id="devDescription" placeholder="Описание">
                 <select id="devConnectionType" onchange="toggleConnectionFields()">
                     <option value="wifi">WiFi</option>
-                    <option value="serial">Serial (COM-порт)</option>
+                    <option value="serial">USB</option>
                 </select>
                 <input type="text" id="devIp" placeholder="IP адрес">
-                <select id="devSerialPort" disabled>
+                <select id="devSerialPort">
                     <option value="">Выберите порт</option>
                 </select>
-                <input type="text" id="devNodeId" placeholder="Node ID (!xxxx)" required>
-                <input type="text" id="devDescription" placeholder="Описание">
-                <button type="submit">Добавить</button>
-                <button type="button" onclick="refreshSerialPorts()" class="btn-secondary">🔄 Порты</button>
             </form>
+            <div class="addingFormButtons">
+                <button type="submit" form="addDeviceForm">Добавить</button>
+                <button type="button" onclick="refreshSerialPorts()" class="btn-secondary" id="refreshPortsButton">Обновить список портов</button>
+            </div>
         </section>
 
         <!-- Список устройств -->
         <section class="card">
-            <h2>Устройства</h2>
+            <h2>Список добавленных устройств</h2>
             <div id="devicesList" class="devices-grid"></div>
         </section>
 
         <!-- Упрощённая форма: только Range Test -->
         <section class="card">
-            <h2>⚙️ Настройка Range Test</h2>
+            <h2>Параметры устройства</h2>
             <form id="configForm">
                 <input type="hidden" id="configIdentifier">
-                
-                <div class="config-info">
-                    <p>🧪 <strong>Range Test Module</strong></p>
-                    <p class="hint">Включите для отправки тестовых пакетов и проверки дальности связи.</p>
-                </div>
                 
                 <div class="form-row">
                     <label class="checkbox-label">
                         <input type="checkbox" id="rangeTestEnabled">
-                        <span>Включить Range Test</span>
+                        <span>Range test enabled</span>
                     </label>
                 </div>
                 
-                <div id="rangeTestStatus" class="status-badge status-off">Выключено</div>
-                
-                <button type="submit" class="btn-primary">Применить</button>
+                <button type="submit">Применить</button>
             </form>
         </section>
 
         <!-- Логи -->
         <section class="card">
-            <h2>📋 Логи</h2>
-            <button onclick="refreshLogs()" class="btn-secondary">Обновить</button>
-            <button onclick="exportAllLogs()" class="btn-secondary">Экспорт со всех</button>
+            <h2 class="card-header">
+                <span class="cardHeaderText">Логи устройства</span>
+                <button onclick="refreshLogs()" class="cardHeaderButton">Обновить</button>
+                <button onclick="exportAllLogs()" class="cardHeaderButton">Экспорт</button>
+            </h2>
             <div id="logsList" class="logs-list"></div>
         </section>
     </div>

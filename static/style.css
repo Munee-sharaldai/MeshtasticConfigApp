@@ -6,6 +6,13 @@ body {
     color: #333;
     line-height: 1.6;
 }
+
+header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
 .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 
 /* === Карточки === */
@@ -13,7 +20,7 @@ body {
     background: #fff;
     border-radius: 8px;
     padding: 20px;
-    margin-bottom: 20px;
+    margin-top: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .card h2 {
@@ -27,18 +34,24 @@ body {
 .form-inline {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
 }
 .form-inline input, .form-inline select {
     padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    min-width: 150px;
+    width: 100%;
 }
 .form-inline input[disabled], .form-inline select[disabled] {
     background: #f5f5f5;
     cursor: not-allowed;
+}
+
+.addingFormButtons {
+    display: flex;
+    margin-top: 10px;
+    gap: 10px; 
+    justify-content: space-between;
+    width: 100%;
 }
 
 /* === Кнопки === */
@@ -49,6 +62,7 @@ button {
     cursor: pointer;
     font-weight: 500;
     transition: background 0.2s;
+    width: 100%;
 }
 .btn-primary { background: #007bff; color: white; }
 .btn-primary:hover { background: #0056b3; }
@@ -97,9 +111,26 @@ button {
 }
 .device-actions {
     display: flex;
-    flex-wrap: wrap;
     gap: 5px;
+    width: 100%;
+    margin-top: 10px;
 }
+
+.card-header {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+}
+
+.cardHeaderButton {
+    width: 10%;
+}
+
+.cardHeaderText {
+    width: 100%;
+}
+
 
 /* === Форма конфигурации (упрощённая) === */
 #configForm {
@@ -205,6 +236,7 @@ button {
     text-align: center;
     color: #888;
     padding: 20px;
+    width: 100%;
 }
 
 /* === Адаптив === */

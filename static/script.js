@@ -52,7 +52,10 @@ function renderDevices(devices) {
     const container = document.getElementById('devicesList');
     
     if (!devices?.length) {
-        container.innerHTML = '<div class="no-devices">Нет устройств</div>';
+        container.innerHTML = `
+            <div class="no-devices"></div>
+            <div class="no-devices">Нет устройств</div>
+        `;
         return;
     }
     
@@ -68,15 +71,17 @@ function renderDevices(devices) {
             </div>
             <div class="device-info">
                 ${d.connection_type === 'wifi' ? `IP: ${escapeHtml(d.ip)}` : `Порт: ${escapeHtml(d.serial_port)}`}<br>
-                Node: ${escapeHtml(d.node_id)}
-                ${d.description ? `<br>📝 ${escapeHtml(d.description)}` : ''}
+                ID устройства: ${escapeHtml(d.node_id)}<br>
+                Описание устройства: ${d.description ? `${escapeHtml(d.description)}` : ''}
             </div>
             <div class="device-actions">
                 <button class="btn-small" onclick="checkStatus('${escapeHtml(identifier)}')">Статус</button>
-                <button class="btn-small" onclick="selectConfig('${escapeHtml(identifier)}')">⚙️ Range Test</button>
-                <button class="btn-small" onclick="exportLog('${escapeHtml(identifier)}')">📥 Лог</button>
-                <button class="btn-small btn-warning" onclick="reboot('${escapeHtml(identifier)}')">Reboot</button>
-                <button class="btn-small btn-danger" onclick="deleteDevice('${escapeHtml(identifier)}')">🗑️</button>
+                <button class="btn-small" onclick="selectConfig('${escapeHtml(identifier)}')">Параметры</button>
+                <button class="btn-small" onclick="exportLog('${escapeHtml(identifier)}')">Лог</button>
+            </div>
+            <div class="device-actions">
+                <button class="btn-small" onclick="reboot('${escapeHtml(identifier)}')">Перезагрузить</button>
+                <button class="btn-small" onclick="deleteDevice('${escapeHtml(identifier)}')">Удалить</button>
             </div>
         </div>`;
     }).join('');
@@ -92,19 +97,22 @@ function toggleConnectionFields() {
     
     const ipField = document.getElementById('devIp');
     const serialField = document.getElementById('devSerialPort');
+    const refreshPortsButton = document.getElementById('refreshPortsButton');
     
     if (type === 'wifi') {
-        ipField.disabled = false;
+        ipField.hidden = false;
         ipField.required = true;
-        serialField.disabled = true;
+        serialField.hidden = true;
         serialField.required = false;
         serialField.value = '';
+        refreshPortsButton.hidden = true;
     } else {
-        ipField.disabled = true;
+        ipField.hidden = true;
         ipField.required = false;
         ipField.value = '';
-        serialField.disabled = false;
+        serialField.hidden = false;
         serialField.required = true;
+        refreshPortsButton.hidden = false;
         refreshSerialPorts();
     }
 }
@@ -115,7 +123,7 @@ async function refreshSerialPorts() {
         const ports = await res.json();
         const select = document.getElementById('devSerialPort');
         select.innerHTML = '<option value="">Выберите порт</option>' + 
-            ports.map(p => `<option value="${escapeHtml(p.port)}">${escapeHtml(p.port)} - ${escapeHtml(p.description)}</option>`).join('');
+            ports.map(p => `<option value="${escapeHtml(p.port)}">${escapeHtml(p.port)}</option>`).join('');
     } catch (e) {
         console.error('❌ Ошибка получения портов:', e);
     }
