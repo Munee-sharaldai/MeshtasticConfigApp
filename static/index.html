@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meshtastic Manager</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📡 Meshtastic Manager</h1>
+            <div id="status" class="status-indicator">● Проверка...</div>
+        </header>
+
+        <!-- Форма добавления -->
+        <section class="card">
+            <h2>Добавить устройство</h2>
+            <!-- Убедитесь, что id="addDeviceForm" -->
+            <form id="addDeviceForm" class="form-inline">
+                <input type="text" id="devName" placeholder="Название" required>
+                <select id="devConnectionType" onchange="toggleConnectionFields()">
+                    <option value="wifi">WiFi</option>
+                    <option value="serial">Serial (COM-порт)</option>
+                </select>
+                <input type="text" id="devIp" placeholder="IP адрес">
+                <select id="devSerialPort" disabled>
+                    <option value="">Выберите порт</option>
+                </select>
+                <input type="text" id="devNodeId" placeholder="Node ID (!xxxx)" required>
+                <input type="text" id="devDescription" placeholder="Описание">
+                
+                <!-- Кнопка отправки -->
+                <button type="submit">Добавить</button>
+                <button type="button" onclick="refreshSerialPorts()" class="btn-secondary">🔄 Порты</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Устройства</h2>
+            <div id="devicesList" class="devices-grid"></div>
+        </section>
+    </div>
+
+<!-- В секцию управления конфигурацией добавляем: -->
+<section class="card">
+    <h2>Управление конфигурацией</h2>
+    <form id="configForm">
+        <input type="hidden" id="configIdentifier">
+        
+        <h3>Позиция</h3>
+        <div class="form-row">
+            <label>Интервал позиции (сек): <input type="number" id="posInterval" value="300"></label>
+            <label>GPS интервал (сек): <input type="number" id="gpsInterval" value="30"></label>
+        </div>
+        
+        <h3>Питание</h3>
+        <div class="form-row">
+            <label>Wait Bluetooth (сек): <input type="number" id="powerWaitSecs" value="60"></label>
+        </div>
+        
+        <h3>LoRa</h3>
+        <div class="form-row">
+            <label>TX Power (dBm): <input type="number" id="txPower" value="20" max="20"></label>
+            <label>Modem Preset: 
+                <select id="modemPreset">
+                    <option value="LONG_MODERATE">Long Moderate</option>
+                    <option value="MEDIUM_FAST">Medium Fast</option>
+                    <option value="SHORT_FAST">Short Fast</option>
+                </select>
+            </label>
+        </div>
+        
+        <h3>Модули</h3>
+        <div class="form-row">
+            <label class="checkbox-label">
+                <input type="checkbox" id="rangeTestEnabled">
+                Range Test Enabled
+            </label>
+        </div>
+        
+        <button type="submit" class="btn-primary">Применить настройки</button>
+    </form>
+</section>
+        <section class="card">
+            <h2>Логи</h2>
+            <button onclick="refreshLogs()" class="btn-secondary">Обновить список</button>
+            <button onclick="exportAllLogs()" class="btn-secondary">Экспортировать логи со всех</button>
+            <div id="logsList" class="logs-list"></div>
+        </section>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
