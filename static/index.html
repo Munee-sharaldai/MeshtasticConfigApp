@@ -10,53 +10,57 @@
     <div class="container">
         <header>
             <h1>Meshtastic Manager</h1>
-            <div id="status" class="status-indicator">● Проверка...</div>
         </header>
 
         <!-- Форма добавления устройства -->
         <section class="card">
             <h2>Форма добавления устройства</h2>
             <form id="addDeviceForm" class="form-inline">
-                <input type="text" id="devName" placeholder="Название" required>
-                <input type="text" id="devNodeId" placeholder="ID устройства" required>
-                <input type="text" id="devDescription" placeholder="Описание">
                 <select id="devConnectionType" onchange="toggleConnectionFields()">
                     <option value="wifi">WiFi</option>
                     <option value="serial">USB</option>
                 </select>
-                <input type="text" id="devIp" placeholder="IP адрес">
-                <select id="devSerialPort">
-                    <option value="">Выберите порт</option>
+                <!-- <input type="text" id="devIp" placeholder="IP адрес"> -->
+                <select id="devIp" disabled>
+                    <option value="">Обновление IP...</option>
+                </select>
+                <select id="devSerialPort" disabled>
+                    <option value="">Обновление портов...</option>
                 </select>
             </form>
             <div class="addingFormButtons">
                 <button type="submit" form="addDeviceForm">Добавить</button>
-                <button type="button" onclick="refreshSerialPorts()" class="btn-secondary" id="refreshPortsButton">Обновить список портов</button>
+                <button type="button" onclick="refreshSerialPorts()" id="refreshPortsButton" hidden>Обновить список портов</button>
+                <button type="button" onclick="refreshIPs()" id="refreshIPsButton" hidden>Обновить список IP</button>
             </div>
         </section>
 
         <!-- Список устройств -->
-        <section class="card">
-            <h2>Список добавленных устройств</h2>
-            <div id="devicesList" class="devices-grid"></div>
-        </section>
+        <div class="devicesAndConfig">
+            <section class="card">
+                <h2>Список добавленных устройств</h2>
+                <div id="devicesList" class="devices-grid"></div>
+            </section>
 
-        <!-- Упрощённая форма: только Range Test -->
-        <section class="card">
-            <h2>Параметры устройства</h2>
-            <form id="configForm">
-                <input type="hidden" id="configIdentifier">
+            <!-- Упрощённая форма: только Range Test -->
+            <section class="card">
+                <h2 id="config-header">Параметры устройства</h2>
+                <form id="configForm" class="form-content">
+                    <input type="hidden" id="configIdentifier">
+                    
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rangeTestEnabled">
+                            <span>Range test enabled</span>
+                        </label>
+                    </div>
                 
-                <div class="form-row">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="rangeTestEnabled">
-                        <span>Range test enabled</span>
-                    </label>
+                </form>
+                <div class="form-footer">
+                    <button type="submit" form="configForm" width="100%">Применить</button>
                 </div>
-                
-                <button type="submit">Применить</button>
-            </form>
-        </section>
+            </section>
+        </div>
 
         <!-- Логи -->
         <section class="card">

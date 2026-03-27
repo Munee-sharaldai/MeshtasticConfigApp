@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchDevices();
     refreshLogs();
     toggleConnectionFields();
-    updateHealthStatus();
     
     // Обработчики форм
     const addForm = document.getElementById('addDeviceForm');
@@ -27,8 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateRangeTestIndicator(e.target.checked);
         });
     }
-    
-    setInterval(updateHealthStatus, 30000);
 });
 
 // ============================================================================
@@ -62,7 +59,6 @@ function renderDevices(devices) {
     container.innerHTML = devices.map(d => {
         const identifier = d.connection_type === 'wifi' ? d.ip : d.serial_port;
         const badge = d.connection_type === 'wifi' ? '📶 WiFi' : '🔌 Serial';
-        
         return `
         <div class="device-card ${d.connection_type}">
             <div class="device-header">
@@ -72,7 +68,6 @@ function renderDevices(devices) {
             <div class="device-info">
                 ${d.connection_type === 'wifi' ? `IP: ${escapeHtml(d.ip)}` : `Порт: ${escapeHtml(d.serial_port)}`}<br>
                 ID устройства: ${escapeHtml(d.node_id)}<br>
-                Описание устройства: ${d.description ? `${escapeHtml(d.description)}` : ''}
             </div>
             <div class="device-actions">
                 <button class="btn-small" onclick="checkStatus('${escapeHtml(identifier)}')">Статус</button>
@@ -98,6 +93,7 @@ function toggleConnectionFields() {
     const ipField = document.getElementById('devIp');
     const serialField = document.getElementById('devSerialPort');
     const refreshPortsButton = document.getElementById('refreshPortsButton');
+    const refreshIPsButton = document.getElementById('refreshIPsButton');
     
     if (type === 'wifi') {
         ipField.hidden = false;
@@ -105,6 +101,8 @@ function toggleConnectionFields() {
         serialField.hidden = true;
         serialField.required = false;
         serialField.value = '';
+        refreshIPs();
+        refreshIPsButton.hidden = false;
         refreshPortsButton.hidden = true;
     } else {
         ipField.hidden = true;
@@ -112,20 +110,39 @@ function toggleConnectionFields() {
         ipField.value = '';
         serialField.hidden = false;
         serialField.required = true;
-        refreshPortsButton.hidden = false;
         refreshSerialPorts();
+        refreshPortsButton.hidden = false;
+        refreshIPsButton.hidden = true;
     }
 }
 
 async function refreshSerialPorts() {
     try {
+        const select = document.getElementById('devSerialPort');
+        select.disabled = true;
+        select.innerHTML = '<option value="">Обновление портов...</option>';
         const res = await fetch(`${API_BASE}/serial/ports`);
         const ports = await res.json();
-        const select = document.getElementById('devSerialPort');
         select.innerHTML = '<option value="">Выберите порт</option>' + 
             ports.map(p => `<option value="${escapeHtml(p.port)}">${escapeHtml(p.port)}</option>`).join('');
+        select.disabled = false;
     } catch (e) {
         console.error('❌ Ошибка получения портов:', e);
+    }
+}
+
+async function refreshIPs() {
+    try {
+        const select = document.getElementById('devIp');
+        select.disabled = true;
+        select.innerHTML = '<option value="">Обновление IP...</option>';
+        const res = await fetch(`${API_BASE}/wifi/ips`);
+        const ips = await res.json();
+        select.innerHTML = '<option value="">Выберите IP</option>' + 
+            ips.map(p => `<option value="${escapeHtml(p.ip)}">${escapeHtml(p.ip)}</option>`).join('');
+        select.disabled = false;
+    } catch (e) {
+        console.error('❌ Ошибка получения ip:', e);
     }
 }
 
@@ -134,22 +151,16 @@ async function handleAddDevice(e) {
     
     const connectionType = document.getElementById('devConnectionType').value;
     const data = {
-        name: document.getElementById('devName').value.trim(),
         connection_type: connectionType,
         ip: connectionType === 'wifi' ? document.getElementById('devIp').value.trim() : null,
-        serial_port: connectionType === 'serial' ? document.getElementById('devSerialPort').value : null,
-        node_id: document.getElementById('devNodeId').value.trim(),
-        description: document.getElementById('devDescription')?.value?.trim() || ''
+        serial_port: connectionType === 'serial' ? document.getElementById('devSerialPort').value : null
     };
     
-    if (!data.name || !data.node_id) {
-        alert('❌ Заполните название и Node ID');
-        return;
-    }
     if (connectionType === 'wifi' && !data.ip) {
         alert('❌ Укажите IP для WiFi');
         return;
     }
+
     if (connectionType === 'serial' && !data.serial_port) {
         alert('❌ Выберите COM-порт');
         return;
@@ -186,19 +197,13 @@ async function loadDeviceConfig(identifier) {
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/status`);
         const data = await res.json();
-        console.log(data);
-        // Значение по умолчанию
         let rangeTestEnabled = false;
         
         // Извлекаем из ответа (структура зависит от типа подключения)
-        if (data.success && data.data) {
+        if (data['success'] && data['data']) {
             // WiFi: module_config.range_test.enabled
-            if (data.data.module_config?.range_test?.enabled !== undefined) {
-                rangeTestEnabled = data.data.module_config.range_test.enabled;
-            }
-            // Serial: может быть в других полях, проверяем
-            else if (data.data.range_test_enabled !== undefined) {
-                rangeTestEnabled = data.data.range_test_enabled;
+            if (data['data']['Module preferences']['rangeTest']['enabled'] !== undefined) {
+                rangeTestEnabled = data['data']['Module preferences']['rangeTest']['enabled'];
             }
         }
         
@@ -226,7 +231,6 @@ async function selectConfig(identifier) {
         alert('❌ Выберите устройство');
         return;
     }
-    
     document.getElementById('configIdentifier').value = identifier;
     await loadDeviceConfig(identifier);
     document.querySelector('#configForm').scrollIntoView({ behavior: 'smooth' });
@@ -422,22 +426,6 @@ async function exportAllLogs() {
 // ============================================================================
 // Статус сервера / Утилиты
 // ============================================================================
-
-async function updateHealthStatus() {
-    try {
-        const res = await fetch(`${API_BASE}/health`);
-        const data = await res.json();
-        const el = document.getElementById('status');
-        el.className = 'status-indicator status-ok';
-        el.innerText = '● Онлайн';
-        el.title = `Обновлено: ${data.timestamp}`;
-    } catch {
-        const el = document.getElementById('status');
-        el.className = 'status-indicator status-error';
-        el.innerText = '● Ошибка';
-        el.title = 'Сервер недоступен';
-    }
-}
 
 function escapeHtml(text) {
     if (!text) return '';

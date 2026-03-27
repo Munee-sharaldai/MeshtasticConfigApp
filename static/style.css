@@ -22,6 +22,7 @@ header {
     padding: 20px;
     margin-top: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    justify-content: space-between;
 }
 .card h2 {
     color: #2c3e50;
@@ -82,13 +83,19 @@ button {
 .devices-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 15px;
+    align-items: start; /* Чтобы карточки не растягивались по высоте сетки */
 }
+
 .device-card {
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     padding: 15px;
     background: #fafafa;
+    height: 200px;              /* Фиксированная высота */
+    overflow-y: auto;           /* Прокрутка при переполнении */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
 }
 .device-card.wifi { border-left: 4px solid #007bff; }
 .device-card.serial { border-left: 4px solid #28a745; }
@@ -133,9 +140,7 @@ button {
 
 
 /* === Форма конфигурации (упрощённая) === */
-#configForm {
-    max-width: 500px;
-}
+
 .config-info {
     background: #e7f3ff;
     padding: 12px;
@@ -199,6 +204,87 @@ button {
 .status-badge.status-off {
     background: #f8d7da;
     color: #721c24;
+}
+
+/* Контейнер-обертка */
+.devicesAndConfig {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    max-height: 54vh;
+}
+
+/* Карточки */
+.devicesAndConfig .card {
+    flex: 1;
+    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 0;
+    padding-top: 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    position: relative;
+}
+
+/* Заголовок - фиксированный сверху */
+.devicesAndConfig .card h2 {
+    position: sticky;
+    top: 0;
+    margin: 0;
+    padding: 20px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    height: 100%;
+}
+
+/* Футер с кнопкой - фиксированный снизу */
+.devicesAndConfig .card .form-footer {
+    position: sticky;
+    bottom: 0;
+    margin: 0;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Кнопка */
+.devicesAndConfig .card .form-footer button {
+    width: 100%;
+    padding: 12px 24px;
+    cursor: pointer;
+}
+
+/* Стилизация скроллбара */
+.devicesAndConfig .card::-webkit-scrollbar {
+    width: 8px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 /* === Логи === */
