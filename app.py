@@ -1,5 +1,5 @@
-# /opt/meshtastic-manager/app.py
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -12,9 +12,10 @@ from typing import Optional, Literal
 import uvicorn
 import serial
 import serial.tools.list_ports
-import subprocess  # ← Для запуска CLI-команд
-import shlex  # ← Для безопасного форматирования аргументов
+import subprocess
+import shlex
 import re
+import nmap
 
 try:
     from meshtastic.serial_interface import SerialInterface
@@ -27,98 +28,112 @@ app = FastAPI(title="Meshtastic Manager - CLI Mode")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Настройки
+load_dotenv()
 LOGS_DIR = "logs"
 DEVICES_FILE = "devices.json"
 os.makedirs(LOGS_DIR, exist_ok=True)
+
+if (str(os.getenv("NMAP_PATH")) not in os.environ["PATH"]):
+    os.environ["PATH"] += (";"+str(os.getenv("NMAP_PATH")))
 
 # Логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Модели данных ---
-class Device(BaseModel):
-    name: str
+class DeviceConfig(BaseModel):
+    range_test_enabled: bool = False
+
+class DeviceFromFrontend(BaseModel):
     connection_type: Literal["wifi", "serial"] = "wifi"
     ip: Optional[str] = None
     serial_port: Optional[str] = None
-    node_id: str
-    description: Optional[str] = ""
 
-class DeviceConfig(BaseModel):
-    """Конфигурация: только range_test"""
-    range_test_enabled: bool = False
+class DeviceInBackend(DeviceFromFrontend):
+    name: str
+    node_id: int
+    config: DeviceConfig
 
 class MessageRequest(BaseModel):
     node_id: str
     message: str
 
 # --- Хелперы ---
+def scan_with_nmap(network='192.168.0.0/24'):
+    nm = nmap.PortScanner()
+    nm.scan(hosts=network, arguments='-sn')  # Ping scan
+    devices = []
+    for host in nm.all_hosts():
+        if 'mac' in nm[host]['addresses']:
+            devices.append({
+                'ip': host,
+                'mac': nm[host]['addresses']['mac'],
+                'vendor': nm[host]['vendor'].get(nm[host]['addresses']['mac'], 'Unknown')
+            })
+    return devices
+
 def parse_meshtastic_info(output: str) -> dict:
     """
-    Парсит текстовый вывод команды `meshtastic --info`.
-    
-    Возвращает структурированный dict с ключевыми полями.
+    Парсит вывод команды с возможными многострочными JSON-значениями.
     """
-    result = {
-        "raw_output": output[:1000],  # Для отладки
-        "node_id": None,
-        "firmware_version": None,
-        "hw_model": None,
-        "range_test_enabled": None,
-        "preferences": {}
-    }
+    result = {}
+    lines = output.strip().split('\n')
+    i = 0
     
-    try:
-        # 1. Извлекаем myNodeNum из "My info"
-        my_info_match = re.search(r'My info:\s*\{([^}]+)\}', output)
-        if my_info_match:
-            try:
-                my_info = json.loads('{' + my_info_match.group(1) + '}')
-                result["node_id"] = f"!{my_info.get('myNodeNum'):08x}" if my_info.get('myNodeNum') else None
-            except json.JSONDecodeError:
-                pass
+    while i < len(lines):
+        line = lines[i].strip()
         
-        # 2. Извлекаем Metadata
-        metadata_match = re.search(r'Metadata:\s*\{([^}]+)\}', output)
-        if metadata_match:
-            try:
-                metadata = json.loads('{' + metadata_match.group(1) + '}')
-                result["firmware_version"] = metadata.get("firmwareVersion")
-                result["hw_model"] = metadata.get("hwModel")
-            except json.JSONDecodeError:
-                pass
+        # Пропускаем пустые строки
+        if not line:
+            i += 1
+            continue
         
-        # 3. 🔧 Извлекаем range_test.enabled из "Module preferences"
-        # Ищем блок Module preferences и внутри него rangeTest
-        module_prefs_match = re.search(r'Module preferences:\s*\{(.+?)\n\}\s*\n(?:Channels:|$)', output, re.DOTALL)
-        if module_prefs_match:
-            module_block = module_prefs_match.group(1)
-            # Ищем rangeTest блок
-            range_test_match = re.search(r'"rangeTest":\s*\{([^}]+)\}', module_block, re.DOTALL)
-            if range_test_match:
-                try:
-                    range_test = json.loads('{' + range_test_match.group(1) + '}')
-                    result["range_test_enabled"] = range_test.get("enabled")
-                except json.JSONDecodeError:
-                    # Альтернативный парсинг, если JSON не валидный
-                    enabled_match = re.search(r'"enabled":\s*(true|false)', range_test_match.group(1))
-                    if enabled_match:
-                        result["range_test_enabled"] = enabled_match.group(1) == "true"
+        # Проверяем, является ли строка началом новой секции
+        # Секция начинается с имени (без отступов) и содержит ': '
+        match = re.match(r'^([A-Za-z0-9_ ]+)\s*:\s*(.*)$', line)
         
-        # 4. Дополнительно: текущий регион и modem_preset из LoRa
-        lora_match = re.search(r'"lora":\s*\{([^}]+)\}', output)
-        if lora_match:
-            try:
-                lora = json.loads('{' + lora_match.group(1) + '}')
-                result["preferences"]["lora_region"] = lora.get("region")
-                result["preferences"]["lora_modem_preset"] = lora.get("modemPreset")
-            except json.JSONDecodeError:
-                pass
+        if match:
+            key = match.group(1)
+            value_start = match.group(2).strip()
+            
+            # Если значение пустое или начинается с { или [, собираем многострочное значение
+            if value_start.startswith('{') or value_start.startswith('['):
+                # Собираем все строки до закрытия скобок
+                json_lines = [value_start]
+                bracket_count = value_start.count('{') - value_start.count('}')
+                bracket_count += value_start.count('[') - value_start.count(']')
                 
-    except Exception as e:
-        logger.warning(f"⚠️ Ошибка парсинга --info: {e}")
+                i += 1
+                while i < len(lines) and bracket_count > 0:
+                    current_line = lines[i]
+                    json_lines.append(current_line)
+                    bracket_count += current_line.count('{') - current_line.count('}')
+                    bracket_count += current_line.count('[') - current_line.count(']')
+                    i += 1
+                
+                # Объединяем и парсим JSON
+                json_string = '\n'.join(json_lines)
+                try:
+                    parsed_value = json.loads(json_string)
+                except json.JSONDecodeError as e:
+                    # Если невалидный JSON, оставляем как строку
+                    parsed_value = json_string
+                    print(f"Warning: Invalid JSON for key '{key}': {e}")
+                
+                result[key] = parsed_value
+            else:
+                # Однострочное значение
+                try:
+                    parsed_value = json.loads(value_start)
+                except json.JSONDecodeError:
+                    parsed_value = value_start
+                result[key] = parsed_value
+                i += 1
+        else:
+            # Строка не является началом секции, пропускаем
+            i += 1
     
-    return result
+    return json.loads(json.dumps(result, indent=2, ensure_ascii=False))
 
 def load_devices():
     if not os.path.exists(DEVICES_FILE):
@@ -148,6 +163,22 @@ def save_devices(devices):
 def get_available_serial_ports():
     ports = serial.tools.list_ports.comports()
     return [{"port": p.device, "description": p.description, "hwid": p.hwid} for p in ports]
+
+def get_available_wifi_ips():
+    subnet = subprocess.run(
+        ["arp", "-a"],
+        capture_output=True,
+        universal_newlines=True,
+        shell=False,
+        timeout=10,
+        encoding="cp866"
+    ).stdout.strip().split('\n')[0].split(' ')[1]
+    while (subnet[-1] != '.'):
+        subnet = subnet[:-1]
+    subnet+='0/24'
+    devices = scan_with_nmap(subnet)
+    
+    return [{'ip': device['ip']} for device in devices if device['vendor'] == 'Espressif']
 
 def send_device_request(ip, endpoint, method="GET", timeout=10):
     """Запрос к устройству через WiFi HTTP API (только для чтения)"""
@@ -242,24 +273,34 @@ async def get_devices():
     return load_devices()
 
 @app.post("/api/devices")
-async def add_device(device: Device):
+async def add_device(device: DeviceFromFrontend):
     devices = load_devices()
-    
+    connect_args = []
+
     if device.connection_type == "wifi":
+        connect_args = ["--host", device.ip]
         if not device.ip:
             raise HTTPException(status_code=400, detail="Для WiFi подключения необходим IP-адрес")
         if any(d.get('ip') == device.ip for d in devices):
             raise HTTPException(status_code=400, detail="Устройство с таким IP уже существует")
     elif device.connection_type == "serial":
+        connect_args = ["--port", device.serial_port]
         if not device.serial_port:
             raise HTTPException(status_code=400, detail="Для Serial подключения необходим COM-порт")
         if any(d.get('serial_port') == device.serial_port for d in devices):
             raise HTTPException(status_code=400, detail="Устройство с таким портом уже существует")
     
-    devices.append(device.dict())
+    # Запрос информации: --info без загрузки узлов для скорости
+    result = run_meshtastic_cli(connect_args + ["--info", "--no-nodes"], timeout=30)
+    parsedData = parse_meshtastic_info(result.get("output", ""))
+    name = parsedData['Owner']
+    node_id = parsedData['My info']['myNodeNum']
+    config = DeviceConfig(range_test_enabled=parsedData['Module preferences']['rangeTest']['enabled'])
+    deviceInBackend = DeviceInBackend(name=name, connection_type=device.connection_type, serial_port=device.serial_port, ip=device.ip, node_id=node_id, config=config)
+    devices.append(deviceInBackend.model_dump())
     save_devices(devices)
-    logger.info(f"Добавлено устройство: {device.name} ({device.connection_type})")
-    return {"status": "success", "message": f"Устройство {device.name} добавлено"}
+    logger.info(f"Добавлено устройство: {name} ({device.connection_type})")
+    return {"status": "success", "message": f"Устройство {name} добавлено"}
 
 @app.delete("/api/devices/{identifier}")
 async def delete_device(identifier: str):
@@ -290,11 +331,10 @@ async def get_device_status(identifier: str):
         output = result.get("output", "")
         parsed = parse_meshtastic_info(output)
         
-        logger.info(f"✅ Статус получен: {parsed.get('node_id')} FW:{parsed.get('firmware_version')}")
+        logger.info(f"✅ Статус получен: {parsed['My info']['myNodeNum']} FW:{parsed['Metadata']['firmwareVersion']}")
         return {
             "success": True, 
             "data": parsed,
-            "cli_output": output  # Опционально: полный вывод для отладки
         }
     else:
         logger.error(f"❌ Ошибка статуса {identifier}: {result.get('error')}")
@@ -402,23 +442,13 @@ async def send_message(identifier: str, req: MessageRequest):
 async def list_serial_ports():
     return get_available_serial_ports()
 
-@app.get("/api/health")
-async def health_check():
-    # Проверка доступности CLI
-    cli_check = subprocess.run(
-        ["meshtastic", "--version"],
-        capture_output=True,
-        text=True,
-        timeout=5
-    )
-    cli_available = cli_check.returncode == 0
-    
-    return {
-        "status": "ok", 
-        "timestamp": datetime.now().isoformat(),
-        "meshtastic_cli": cli_available,
-        "cli_version": cli_check.stdout.strip() if cli_available else None
-    }
+@app.get("/api/logs")
+async def logs():
+    return {'filename': 'log.txt', 'size': '1000'}
+
+@app.get("/api/wifi/ips")
+async def list_wifi_ips():
+    return get_available_wifi_ips()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
