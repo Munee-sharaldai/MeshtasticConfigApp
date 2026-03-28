@@ -13,19 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addForm) {
         addForm.addEventListener('submit', handleAddDevice);
     }
-    
-    const configForm = document.getElementById('configForm');
-    if (configForm) {
-        configForm.addEventListener('submit', handleConfigSubmit);
-    }
-    
-    // Индикатор статуса Range Test
-    const rangeTestCheckbox = document.getElementById('rangeTestEnabled');
-    if (rangeTestCheckbox) {
-        rangeTestCheckbox.addEventListener('change', (e) => {
-            updateRangeTestIndicator(e.target.checked);
-        });
-    }
+
 });
 
 // ============================================================================
@@ -192,8 +180,9 @@ async function handleAddDevice(e) {
 // ============================================================================
 
 async function loadDeviceConfig(identifier) {
+    section = document.getElementById('config-section');
+    container = document.getElementById('config-forms-container');
     console.log('📥 Загрузка config для:', identifier);
-    
     try {
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/status`);
         const data = await res.json();
@@ -202,19 +191,55 @@ async function loadDeviceConfig(identifier) {
         // Извлекаем из ответа (структура зависит от типа подключения)
         if (data['success'] && data['data']) {
             // WiFi: module_config.range_test.enabled
+            section.querySelector('h2').innerHTML = `Параметры устройства ${/\([A-z0-9 ]+\)/.exec(data['data']['Owner'])}`;
             if (data['data']['Module preferences']['rangeTest']['enabled'] !== undefined) {
                 rangeTestEnabled = data['data']['Module preferences']['rangeTest']['enabled'];
+                container.innerHTML = `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label" width="100%">
+                            <input name='range_test_enabled' type="checkbox" id="rangeTestEnabled" ${rangeTestEnabled ? 'checked' : ''}>
+                            <span>Range test enabled</span>
+                        </label>
+                        <div>
+                            <button type="submit" width="100%">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
             }
+            if ((data['data']['Preferences']['network']['wifiEnabled'] !== undefined)) {
+                wifiEnabled = data['data']['Preferences']['network']['wifiEnabled'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <input name='wifi_enabled' type="checkbox" id="wifiEnabled" ${wifiEnabled ? 'checked' : ''}>
+                            <span>Wi-Fi enabled</span>
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            const configForms = document.getElementsByClassName('configForm');
+            if (configForms) {
+                for (let configForm of configForms) {
+                    configForm.addEventListener('submit', handleConfigSubmit);
+                }
+            }
+        } else {
+            container.innerHTML = 'Ошибка получения параметров';
         }
         
-        // Применяем к форме
-        document.getElementById('rangeTestEnabled').checked = rangeTestEnabled;
         updateRangeTestIndicator(rangeTestEnabled);
         
-        console.log('✅ Config загружен: range_test =', rangeTestEnabled);
+        console.log('✅ Config загружен: ', data['data']);
     } catch (e) {
         console.error('❌ Ошибка загрузки конфига:', e);
-        updateRangeTestIndicator(false);
+        container.innerHTML = 'Ошибка получения параметров';
     }
 }
 
@@ -227,38 +252,63 @@ function updateRangeTestIndicator(isEnabled) {
 }
 
 async function selectConfig(identifier) {
+    container = document.getElementById('config-forms-container');
+    container.innerHTML = `
+    <form id="configForm">
+        <input type="hidden" id="configIdentifier">
+        <div class="form-row">
+            Загрузка параметров...
+        </div>
+    </form>
+    `;
     if (!identifier) {
         alert('❌ Выберите устройство');
         return;
     }
     document.getElementById('configIdentifier').value = identifier;
     await loadDeviceConfig(identifier);
-    document.querySelector('#configForm').scrollIntoView({ behavior: 'smooth' });
+    document.querySelector('#config-forms-container').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function handleConfigSubmit(e) {
     e.preventDefault();
-    
-    const identifier = document.getElementById('configIdentifier').value;
-    if (!identifier) {
-        alert('❌ Устройство не выбрано');
-        return;
+    let config = {};
+    identifier = document.getElementById('configIdentifier').value;
+    if (e.target.range_test_enabled) {
+        config = {
+            param_name: 'range_test_enabled',
+            bool_param: e.target.range_test_enabled.checked
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Range test enabled: ${config.bool_param ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.wifi_enabled) {
+        config = {
+            param_name: 'wifi_enabled',
+            bool_param: e.target.wifi_enabled.checked
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Wi-Fi enabled: ${config.bool_param ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
+        
+        if (!confirm(confirmMsg)) return;
     }
     
-    // Только одно поле
-    const config = {
-        range_test_enabled: document.getElementById('rangeTestEnabled').checked
-    };
-    
-    console.log('📦 Отправка config:', config);
-    
-    const confirmMsg = `Применить настройку Range Test?\n\n` +
-        `Устройство: ${identifier}\n` +
-        `Состояние: ${config.range_test_enabled ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
-    
-    if (!confirm(confirmMsg)) return;
-    
     try {
+        container = document.getElementById('config-forms-container');
+        container.innerHTML = `
+        <form class="config-form">
+            <div class="form-row">
+                Обновление параметров...
+            </div>
+        </form>
+        `;
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/configure`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -267,12 +317,8 @@ async function handleConfigSubmit(e) {
         const data = await res.json();
         
         if (data.success) {
-            const msg = data.data?.message || 'Настройка применена';
-            const cliInfo = data.data?.cli_output ? `\n\n📋 Вывод:\n${data.data.cli_output}` : '';
+            const msg = data.data?.message || 'Параметры применены';
             
-            alert(`✅ ${msg}${cliInfo}\n\n🔄 Устройство автоматически перезагружается.`);
-            
-            // Обновляем статус через 5-7 секунд (после авто-ребута)
             setTimeout(() => {
                 loadDeviceConfig(identifier);
             }, 7000);

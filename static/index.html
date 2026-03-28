@@ -24,14 +24,14 @@
                 <select id="devIp" disabled>
                     <option value="">Обновление IP...</option>
                 </select>
-                <select id="devSerialPort" disabled>
+                <select id="devSerialPort" disabled hidden>
                     <option value="">Обновление портов...</option>
                 </select>
             </form>
             <div class="addingFormButtons">
                 <button type="submit" form="addDeviceForm">Добавить</button>
                 <button type="button" onclick="refreshSerialPorts()" id="refreshPortsButton" hidden>Обновить список портов</button>
-                <button type="button" onclick="refreshIPs()" id="refreshIPsButton" hidden>Обновить список IP</button>
+                <button type="button" onclick="refreshIPs()" id="refreshIPsButton">Обновить список IP</button>
             </div>
         </section>
 
@@ -39,25 +39,23 @@
         <div class="devicesAndConfig">
             <section class="card">
                 <h2>Список добавленных устройств</h2>
-                <div id="devicesList" class="devices-grid"></div>
+                <div id="devicesList" class="devices-grid">
+                     <div class="device-card">
+                        Загрузка устройств...
+                     </div>
+                </div>
             </section>
 
             <!-- Упрощённая форма: только Range Test -->
-            <section class="card">
+            <section id="config-section" class="card">
                 <h2 id="config-header">Параметры устройства</h2>
-                <form id="configForm" class="form-content">
-                    <input type="hidden" id="configIdentifier">
-                    
-                    <div class="form-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="rangeTestEnabled">
-                            <span>Range test enabled</span>
-                        </label>
-                    </div>
-                
-                </form>
-                <div class="form-footer">
-                    <button type="submit" form="configForm" width="100%">Применить</button>
+                <input type="hidden" id="configIdentifier">
+                <div id="config-forms-container" class="form-content">
+                    <form class="config-form">
+                        <div class="form-row">
+                            Устройство не выбрано
+                        </div>
+                    </form>
                 </div>
             </section>
         </div>
