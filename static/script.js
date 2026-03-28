@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ DOM загружен');
     
     fetchDevices();
-    refreshLogs();
     toggleConnectionFields();
     
     // Обработчики форм
@@ -198,11 +197,27 @@ async function loadDeviceConfig(identifier) {
                 <form class="configForm">
                     <div class="form-row">
                         <label class="checkbox-label" width="100%">
-                            <input name='range_test_enabled' type="checkbox" id="rangeTestEnabled" ${rangeTestEnabled ? 'checked' : ''}>
                             <span>Range test enabled</span>
+                            <input name='range_test_enabled' type="checkbox" id="rangeTestEnabled" ${rangeTestEnabled ? 'checked' : ''}>
                         </label>
                         <div>
                             <button type="submit" width="100%">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Module preferences']['rangeTest']['sender'] !== undefined)) {
+                sender = data['data']['Module preferences']['rangeTest']['sender'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Sender message interval (seconds)</span>
+                            <input name='sender' type="number" id="sender" value="${sender}">
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
                         </div>
                     </div>
                 </form>
@@ -214,8 +229,125 @@ async function loadDeviceConfig(identifier) {
                 <form class="configForm">
                     <div class="form-row">
                         <label class="checkbox-label">
-                            <input name='wifi_enabled' type="checkbox" id="wifiEnabled" ${wifiEnabled ? 'checked' : ''}>
                             <span>Wi-Fi enabled</span>
+                            <input name='wifi_enabled' type="checkbox" id="wifiEnabled" ${wifiEnabled ? 'checked' : ''}>
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['network']['wifiSsid'] !== undefined)) {
+                wifiSsid = data['data']['Preferences']['network']['wifiSsid'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Wi-Fi SSID</span>
+                            <input name='wifi_ssid' type="text" id="wifiSsid" value="${wifiSsid}">
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['network']['wifiPsk'] !== undefined)) {
+                wifiPsk = data['data']['Preferences']['network']['wifiPsk'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Wi-Fi PSK</span>
+                            <input name='wifi_psk' type="text" id="wifiPsk" value="${wifiPsk}">
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['lora']['modemPreset'] !== undefined)) {
+                modemPreset = data['data']['Preferences']['lora']['modemPreset'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Настройка канала</span>
+                            <select name='modem_preset' type="text" id="modemPreset" value="${modemPreset}">
+                                <option value="SHORT_FAST" ${modemPreset == "SHORT_FAST" ? 'selected' : ''}>Малое расстояние / Быстро</option>
+                                <option value="SHORT_SLOW" ${modemPreset == "SHORT_SLOW" ? 'selected' : ''}>Малое расстояние / Медленный</option>
+                                <option value="MEDIUM_FAST" ${modemPreset == "MEDIUM_FAST" ? 'selected' : ''}>Среднее расстояние / Быстро</option>
+                                <option value="MEDIUM_SLOW" ${modemPreset == "MEDIUM_SLOW" ? 'selected' : ''}>Среднее расстояние / Медленный</option>
+                                <option value="LONG_FAST" ${modemPreset == "LONG_FAST" ? 'selected' : ''}>Большое расстояние / Быстро</option>
+                                <option value="LONG_MODERATE" ${modemPreset == "LONG_MODERATE" ? 'selected' : ''}>Большая дальность / Умеренная</option>
+                                <option value="LONG_SLOW" ${modemPreset == "LONG_SLOW" ? 'selected' : ''}>Дальний / Медленный</option>
+                                <option value="VERY_LONG_SLOW" ${modemPreset == "VERY_LONG_SLOW " ? 'selected' : ''}>Очень большое расстояние / Медленный</option>
+                            </select>
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['device']['role'] !== undefined)) {
+                role = data['data']['Preferences']['device']['role'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Role</span>
+                            <select name='role' type="text" id="role" value="${role}">
+                                <option value="CLIENT" ${role == "CLIENT" ? 'selected' : ''}>CLIENT</option>
+                                <option value="CLIENT_MUTE" ${role == "CLIENT_MUTE" ? 'selected' : ''}>CLIENT_MUTE</option>
+                                <option value="ROUTER" ${role == "ROUTER" ? 'selected' : ''}>ROUTER</option>
+                                <option value="ROUTER_CLIENT" ${role == "ROUTER_CLIENT" ? 'selected' : ''}>ROUTER_CLIENT</option>
+                                <option value="REPEATER" ${role == "REPEATER" ? 'selected' : ''}>REPEATER</option>
+                                <option value="TRACKER" ${role == "TRACKER" ? 'selected' : ''}>TRACKER</option>
+                                <option value="SENSOR" ${role == "SENSOR" ? 'selected' : ''}>SENSOR</option>
+                                <option value="TAK" ${role == "TAK " ? 'selected' : ''}>TAK</option>
+                                <option value="CLIENT_HIDDEN" ${role == "CLIENT_HIDDEN " ? 'selected' : ''}>CLIENT_HIDDEN</option>
+                                <option value="LOST_AND_FOUND" ${role == "LOST_AND_FOUND " ? 'selected' : ''}>LOST_AND_FOUND</option>
+                                <option value="TAK_TRACKER" ${role == "TAK_TRACKER " ? 'selected' : ''}>TAK_TRACKER</option>
+                            </select>
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['position']['positionBroadcastSecs'] !== undefined)) {
+                positionBroadcastSecs = data['data']['Preferences']['position']['positionBroadcastSecs'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>Position broadcast interval (seconds)</span>
+                            <input name='position_broadcast_secs' type="number" id="positionBroadcastSecs" value="${positionBroadcastSecs}">
+                        </label>
+                        <div>
+                            <button type="submit">Применить</button>
+                        </div>
+                    </div>
+                </form>
+                `;
+            }
+            if ((data['data']['Preferences']['position']['gpsUpdateInterval'] !== undefined)) {
+                gpsUpdateInterval = data['data']['Preferences']['position']['gpsUpdateInterval'];
+                container.innerHTML += `
+                <form class="configForm">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <span>GPS update interval (seconds)</span>
+                            <input name='gps_update_interval' type="number" id="gpsUpdateInterval" value="${gpsUpdateInterval}">
                         </label>
                         <div>
                             <button type="submit">Применить</button>
@@ -286,6 +418,18 @@ async function handleConfigSubmit(e) {
             `Range test enabled: ${config.bool_param ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
         
         if (!confirm(confirmMsg)) return;
+    } else if (e.target.sender) {
+        config = {
+            param_name: 'sender',
+            int_param: e.target.sender.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Ranger test sender: ${config.int_param }`;
+        
+        if (!confirm(confirmMsg)) return;
     } else if (e.target.wifi_enabled) {
         config = {
             param_name: 'wifi_enabled',
@@ -296,6 +440,78 @@ async function handleConfigSubmit(e) {
         const confirmMsg = `Применить параметры?\n\n` +
             `Устройство: ${identifier}\n` +
             `Wi-Fi enabled: ${config.bool_param ? '🟢 ВКЛ' : '🔴 ВЫКЛ'}`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.wifi_ssid) {
+        config = {
+            param_name: 'wifi_ssid',
+            str_param: e.target.wifi_ssid.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Wi-Fi SSID: ${config.str_param}`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.wifi_psk) {
+        config = {
+            param_name: 'wifi_psk',
+            str_param: e.target.wifi_psk.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Wi-Fi PSK: ${config.str_param }`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.modem_preset) {
+        config = {
+            param_name: 'modem_preset',
+            str_param: e.target.modem_preset.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `LoRa modem preset: ${config.str_param }`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.role) {
+        config = {
+            param_name: 'role',
+            str_param: e.target.role.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Device role: ${config.str_param }`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.position_broadcast_secs) {
+        config = {
+            param_name: 'position_broadcast_secs',
+            int_param: e.target.position_broadcast_secs.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Position broadcast secs: ${config.int_param }`;
+        
+        if (!confirm(confirmMsg)) return;
+    } else if (e.target.gps_update_interval) {
+        config = {
+            param_name: 'gps_update_interval',
+            int_param: e.target.gps_update_interval.value
+        };
+        console.log('📦 Отправка config:', config);
+        
+        const confirmMsg = `Применить параметры?\n\n` +
+            `Устройство: ${identifier}\n` +
+            `Posion gps update interval: ${config.int_param }`;
         
         if (!confirm(confirmMsg)) return;
     }
@@ -340,6 +556,7 @@ async function reboot(identifier) {
     if (!confirm('⚠️ Перезагрузить устройство?')) return;
     
     try {
+        container = document.getElementById('config-forms-container');
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/reboot`, { method: 'POST' });
         const data = await res.json();
         alert(data.success ? '✅ Перезагрузка отправлена' : '❌ ' + (data.error || 'Ошибка'));
@@ -397,73 +614,6 @@ async function sendMessage(identifier) {
         });
         const data = await res.json();
         alert(data.success ? '✅ Отправлено' : '❌ ' + (data.error || 'Ошибка'));
-    } catch (e) {
-        alert('❌ ' + e.message);
-    }
-}
-
-// ============================================================================
-// Логи
-// ============================================================================
-
-async function refreshLogs() {
-    try {
-        const res = await fetch(`${API_BASE}/logs`);
-        const logs = await res.json();
-        const container = document.getElementById('logsList');
-        
-        if (!logs?.length) {
-            container.innerHTML = '<div class="no-logs">Нет логов</div>';
-            return;
-        }
-        
-        container.innerHTML = logs.map(l => `
-            <div class="log-item">
-                <span>📄 ${escapeHtml(l.filename)}</span>
-                <span class="log-size">${formatFileSize(l.size)}</span>
-                <a href="${API_BASE}/logs/${encodeURIComponent(l.filename)}" download class="btn-small">📥</a>
-            </div>
-        `).join('');
-    } catch (e) {
-        console.error('❌ Ошибка логов:', e);
-    }
-}
-
-async function exportLog(identifier) {
-    if (!identifier) return alert('❌ Не указано устройство');
-    
-    try {
-        const res = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(identifier)}`, { method: 'POST' });
-        const data = await res.json();
-        if (data.status === 'success') {
-            alert('✅ Сохранён: ' + data.filename);
-            refreshLogs();
-        } else {
-            alert('❌ ' + (data.detail || 'Ошибка'));
-        }
-    } catch (e) {
-        alert('❌ ' + e.message);
-    }
-}
-
-async function exportAllLogs() {
-    try {
-        const res = await fetch(`${API_BASE}/devices`);
-        const devices = await res.json();
-        if (!devices?.length) return alert('⚠️ Нет устройств');
-        
-        let ok = 0, err = 0;
-        for (const d of devices) {
-            const id = d.connection_type === 'wifi' ? d.ip : d.serial_port;
-            try {
-                const r = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(id)}`, { method: 'POST' });
-                const data = await r.json();
-                if (data.status === 'success') ok++; else err++;
-            } catch { err++; }
-            await new Promise(r => setTimeout(r, 500));
-        }
-        alert(`✅ Готово: ${ok} успешно, ${err} ошибок`);
-        refreshLogs();
     } catch (e) {
         alert('❌ ' + e.message);
     }
