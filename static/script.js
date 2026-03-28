@@ -37,8 +37,7 @@ function renderDevices(devices) {
     
     if (!devices?.length) {
         container.innerHTML = `
-            <div class="no-devices"></div>
-            <div class="no-devices">Нет устройств</div>
+            <div class="form-row">Нет устройств</div>
         `;
         return;
     }
@@ -556,7 +555,14 @@ async function reboot(identifier) {
     if (!confirm('⚠️ Перезагрузить устройство?')) return;
     
     try {
-        container = document.getElementById('config-forms-container');
+        const container = document.getElementById('config-forms-container');
+        container.innerHTML = `
+            <form class="config-form">
+                <div class="form-row">
+                    Устройство не выбрано
+                </div>
+            </form>
+        `;
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}/reboot`, { method: 'POST' });
         const data = await res.json();
         alert(data.success ? '✅ Перезагрузка отправлена' : '❌ ' + (data.error || 'Ошибка'));
@@ -570,6 +576,14 @@ async function deleteDevice(identifier) {
     if (!confirm('🗑️ Удалить устройство из списка?')) return;
     
     try {
+        const container = document.getElementById('config-forms-container');
+        container.innerHTML = `
+            <form class="config-form">
+                <div class="form-row">
+                    Устройство не выбрано
+                </div>
+            </form>
+        `;
         const res = await fetch(`${API_BASE}/devices/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
         if (res.ok) {
             fetchDevices();
