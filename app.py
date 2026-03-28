@@ -46,7 +46,7 @@ class DeviceConfig(BaseModel):
     wifi_enabled: bool = False
 
 class DeviceParam(BaseModel):
-    param_name: Literal["range_test_enabled", "wifi_enabled"]
+    param_name: Literal["range_test_enabled", "wifi_enabled", "wifi_ssid", "wifi_psk", "modem_preset", "role", "position_broadcast_secs", "gps_update_interval", "sender"]
     bool_param: Optional[bool] = None
     str_param: Optional[str] = None
     int_param: Optional[int] = None
@@ -246,7 +246,7 @@ def run_meshtastic_cli(args: list, timeout: int = 30) -> dict:
             timeout=timeout
         )
         
-        if result.returncode == 0:
+        if 'Connected to radio' in result.stdout:
             return {
                 "success": True,
                 "output": result.stdout.strip(),
@@ -321,7 +321,7 @@ async def delete_device(identifier: str):
 async def get_device_status(identifier: str):
     """Проверка доступности устройства через CLI с парсингом вывода"""
     devices = load_devices()
-    device = next((d for d in devices if d.get('ip') == identifier or d.get('serial_port') == identifier), None)
+    device = next((d for d in devices if d['ip'] == identifier or d['serial_port'] == identifier), None)
     
     if not device:
         raise HTTPException(status_code=404, detail="Устройство не найдено")
@@ -335,10 +335,10 @@ async def get_device_status(identifier: str):
     # Запрос информации: --info без загрузки узлов для скорости
     result = run_meshtastic_cli(connect_args + ["--info", "--no-nodes"], timeout=30)
     
-    if result["success"]:
-        output = result.get("output", "")
-        parsed = parse_meshtastic_info(output)
-        
+    output = result.get("output", "")
+    parsed = parse_meshtastic_info(output)
+    
+    if parsed:  
         logger.info(f"✅ Статус получен: {parsed['My info']['myNodeNum']} FW:{parsed['Metadata']['firmwareVersion']}")
         return {
             "success": True, 
@@ -554,8 +554,22 @@ async def configure_device(identifier: str, param: DeviceParam):
     result = []
     if param.param_name == 'range_test_enabled':
         result = run_meshtastic_cli(connect_args + ['--set', 'range_test.enabled', 'true' if param.bool_param else 'false'], timeout=45)
-    else:
+    elif param.param_name == 'wifi_enabled':
         result = run_meshtastic_cli(connect_args + ['--set', 'network.wifi_enabled', 'true' if param.bool_param else 'false'], timeout=45)
+    elif param.param_name == 'wifi_ssid':
+        result = run_meshtastic_cli(connect_args + ['--set', 'network.wifi_ssid', param.str_param], timeout=45)
+    elif param.param_name == 'wifi_psk':
+        result = run_meshtastic_cli(connect_args + ['--set', 'network.wifi_psk', param.str_param], timeout=45)
+    elif param.param_name == 'modem_preset':
+        result = run_meshtastic_cli(connect_args + ['--set', 'lora.modem_preset', param.str_param], timeout=45)
+    elif param.param_name == 'role':
+        result = run_meshtastic_cli(connect_args + ['--set', 'device.role', param.str_param], timeout=45)
+    elif param.param_name == 'position_broadcast_secs':
+        result = run_meshtastic_cli(connect_args + ['--set', 'position.position_broadcast_secs', str(param.int_param)], timeout=45)
+    elif param.param_name == 'gps_broadcast_interval':
+        result = run_meshtastic_cli(connect_args + ['--set', 'position.gps_update_interval', str(param.int_param)], timeout=45)
+    else:
+        result = run_meshtastic_cli(connect_args + ['--set', 'range_test.sender', str(param.int_param)], timeout=45)
 
     if result["success"]:
         logger.info(f"✅ Параметр {param.param_name} применен на {identifier}")
