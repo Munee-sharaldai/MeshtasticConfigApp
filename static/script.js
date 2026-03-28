@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ DOM загружен');
     
     fetchDevices();
-    refreshLogs();
     toggleConnectionFields();
     
     // Обработчики форм
@@ -615,73 +614,6 @@ async function sendMessage(identifier) {
         });
         const data = await res.json();
         alert(data.success ? '✅ Отправлено' : '❌ ' + (data.error || 'Ошибка'));
-    } catch (e) {
-        alert('❌ ' + e.message);
-    }
-}
-
-// ============================================================================
-// Логи
-// ============================================================================
-
-async function refreshLogs() {
-    try {
-        const res = await fetch(`${API_BASE}/logs`);
-        const logs = await res.json();
-        const container = document.getElementById('logsList');
-        
-        if (!logs?.length) {
-            container.innerHTML = '<div class="no-logs">Нет логов</div>';
-            return;
-        }
-        
-        container.innerHTML = logs.map(l => `
-            <div class="log-item">
-                <span>📄 ${escapeHtml(l.filename)}</span>
-                <span class="log-size">${formatFileSize(l.size)}</span>
-                <a href="${API_BASE}/logs/${encodeURIComponent(l.filename)}" download class="btn-small">📥</a>
-            </div>
-        `).join('');
-    } catch (e) {
-        console.error('❌ Ошибка логов:', e);
-    }
-}
-
-async function exportLog(identifier) {
-    if (!identifier) return alert('❌ Не указано устройство');
-    
-    try {
-        const res = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(identifier)}`, { method: 'POST' });
-        const data = await res.json();
-        if (data.status === 'success') {
-            alert('✅ Сохранён: ' + data.filename);
-            refreshLogs();
-        } else {
-            alert('❌ ' + (data.detail || 'Ошибка'));
-        }
-    } catch (e) {
-        alert('❌ ' + e.message);
-    }
-}
-
-async function exportAllLogs() {
-    try {
-        const res = await fetch(`${API_BASE}/devices`);
-        const devices = await res.json();
-        if (!devices?.length) return alert('⚠️ Нет устройств');
-        
-        let ok = 0, err = 0;
-        for (const d of devices) {
-            const id = d.connection_type === 'wifi' ? d.ip : d.serial_port;
-            try {
-                const r = await fetch(`${API_BASE}/logs/export/${encodeURIComponent(id)}`, { method: 'POST' });
-                const data = await r.json();
-                if (data.status === 'success') ok++; else err++;
-            } catch { err++; }
-            await new Promise(r => setTimeout(r, 500));
-        }
-        alert(`✅ Готово: ${ok} успешно, ${err} ошибок`);
-        refreshLogs();
     } catch (e) {
         alert('❌ ' + e.message);
     }
