@@ -43,6 +43,14 @@ logger = logging.getLogger(__name__)
 # --- Модели данных ---
 class DeviceConfig(BaseModel):
     range_test_enabled: bool = False
+    wifi_enabled: bool = False
+
+class DeviceParam(BaseModel):
+    param_name: Literal["range_test_enabled", "wifi_enabled"]
+    bool_param: Optional[bool] = None
+    str_param: Optional[str] = None
+    int_param: Optional[int] = None
+    float_param: Optional[float] = None
 
 class DeviceFromFrontend(BaseModel):
     connection_type: Literal["wifi", "serial"] = "wifi"
@@ -341,8 +349,196 @@ async def get_device_status(identifier: str):
         return {"success": False, "error": result.get("error", "Неизвестная ошибка")}
 
 @app.post("/api/devices/{identifier}/configure")
-async def configure_device(identifier: str, config: DeviceConfig):
-    """Отправка настройки range_test через CLI"""
+async def configure_device(identifier: str, param: DeviceParam):
+    """Отправка настройки range_test через CLI
+        device:
+            device.button_gpio
+            device.buzzer_gpio
+            device.debug_log_enabled
+            device.disable_triple_click
+            device.double_tap_as_button_press
+            device.is_managed
+            device.led_heartbeat_disabled
+            device.node_info_broadcast_secs
+            device.rebroadcast_mode
+            device.role
+            device.serial_enabled
+            device.tzdef
+        position:
+            position.broadcast_smart_minimum_distance
+            position.broadcast_smart_minimum_interval_secs
+            position.fixed_position
+            position.gps_attempt_time
+            position.gps_en_gpio
+            position.gps_enabled
+            position.gps_mode
+            position.gps_update_interval
+            position.position_broadcast_secs
+            position.position_broadcast_smart_enabled
+            position.position_flags
+            position.rx_gpio
+            position.tx_gpio
+        power:
+            power.adc_multiplier_override
+            power.device_battery_ina_address
+            power.is_power_saving
+            power.ls_secs
+            power.min_wake_secs
+            power.on_battery_shutdown_after_secs
+            power.powermon_enables
+            power.sds_secs
+            power.wait_bluetooth_secs
+        network:
+            network.address_mode
+            network.eth_enabled
+            network.ipv4_config
+            network.ntp_server
+            network.rsyslog_server
+            network.wifi_enabled
+            network.wifi_psk
+            network.wifi_ssid
+        display:
+            display.auto_screen_carousel_secs
+            display.compass_north_top
+            display.compass_orientation
+            display.displaymode
+            display.flip_screen
+            display.gps_format
+            display.heading_bold
+            display.oled
+            display.screen_on_secs
+            display.units
+            display.wake_on_tap_or_motion
+        lora:
+            lora.bandwidth
+            lora.channel_num
+            lora.coding_rate
+            lora.frequency_offset
+            lora.hop_limit
+            lora.ignore_incoming
+            lora.ignore_mqtt
+            lora.modem_preset
+            lora.override_duty_cycle
+            lora.override_frequency
+            lora.pa_fan_disabled
+            lora.region
+            lora.spread_factor
+            lora.sx126x_rx_boosted_gain
+            lora.tx_enabled
+            lora.tx_power
+            lora.use_preset
+        bluetooth:
+            bluetooth.device_logging_enabled
+            bluetooth.enabled
+            bluetooth.fixed_pin
+            bluetooth.mode
+        mqtt:
+            mqtt.address
+            mqtt.enabled
+            mqtt.encryption_enabled
+            mqtt.json_enabled
+            mqtt.map_report_settings
+            mqtt.map_reporting_enabled
+            mqtt.password
+            mqtt.proxy_to_client_enabled
+            mqtt.root
+            mqtt.tls_enabled
+            mqtt.username
+        serial:
+            serial.baud
+            serial.echo
+            serial.enabled
+            serial.mode
+            serial.override_console_serial_port
+            serial.rxd
+            serial.timeout
+            serial.txd
+        external_notification:
+            external_notification.active
+            external_notification.alert_bell
+            external_notification.alert_bell_buzzer
+            external_notification.alert_bell_vibra
+            external_notification.alert_message
+            external_notification.alert_message_buzzer
+            external_notification.alert_message_vibra
+            external_notification.enabled
+            external_notification.nag_timeout
+            external_notification.output
+            external_notification.output_buzzer
+            external_notification.output_ms
+            external_notification.output_vibra
+            external_notification.use_i2s_as_buzzer
+            external_notification.use_pwm
+        store_forward:
+            store_forward.enabled
+            store_forward.heartbeat
+            store_forward.history_return_max
+            store_forward.history_return_window
+            store_forward.is_server
+            store_forward.records
+        range_test:
+            range_test.enabled
+            range_test.save
+            range_test.sender
+        telemetry:
+            telemetry.air_quality_enabled
+            telemetry.air_quality_interval
+            telemetry.device_update_interval
+            telemetry.environment_display_fahrenheit
+            telemetry.environment_measurement_enabled
+            telemetry.environment_screen_enabled
+            telemetry.environment_update_interval
+            telemetry.power_measurement_enabled
+            telemetry.power_screen_enabled
+            telemetry.power_update_interval
+        canned_message:
+            canned_message.allow_input_source
+            canned_message.enabled
+            canned_message.inputbroker_event_ccw
+            canned_message.inputbroker_event_cw
+            canned_message.inputbroker_event_press
+            canned_message.inputbroker_pin_a
+            canned_message.inputbroker_pin_b
+            canned_message.inputbroker_pin_press
+            canned_message.rotary1_enabled
+            canned_message.send_bell
+            canned_message.updown1_enabled
+        audio:
+            audio.bitrate
+            audio.codec2_enabled
+            audio.i2s_din
+            audio.i2s_sck
+            audio.i2s_sd
+            audio.i2s_ws
+            audio.ptt_pin
+        remote_hardware:
+            remote_hardware.allow_undefined_pin_access
+            remote_hardware.available_pins
+            remote_hardware.enabled
+        neighbor_info:
+            neighbor_info.enabled
+            neighbor_info.update_interval
+        ambient_lighting:
+            ambient_lighting.blue
+            ambient_lighting.current
+            ambient_lighting.green
+            ambient_lighting.led_state
+            ambient_lighting.red
+        detection_sensor:
+            detection_sensor.detection_triggered_high
+            detection_sensor.enabled
+            detection_sensor.minimum_broadcast_secs
+            detection_sensor.monitor_pin
+            detection_sensor.name
+            detection_sensor.send_bell
+            detection_sensor.state_broadcast_secs
+            detection_sensor.use_pullup
+        paxcounter:
+            paxcounter.ble_threshold
+            paxcounter.enabled
+            paxcounter.paxcounter_update_interval
+            paxcounter.wifi_threshold
+    """
     devices = load_devices()
     device = next((d for d in devices if d.get('ip') == identifier or d.get('serial_port') == identifier), None)
     
@@ -355,43 +551,28 @@ async def configure_device(identifier: str, config: DeviceConfig):
     else:
         connect_args = ["--port", device['serial_port']]
     
-    # Формируем команду
-    value_str = "true" if config.range_test_enabled else "false"
-    set_args = ["--set", "range_test.enabled", value_str]
-    
-    logger.info(f"⚙️ Применяю: range_test.enabled={value_str} для {identifier}")
-    
-    result = run_meshtastic_cli(connect_args + set_args, timeout=45)
-    
-    if result["success"]:
-        output = result.get("output", "").lower()
-        
-        # 🔧 Проверяем, что настройка действительно применилась
-        # Успешный вывод содержит: "Writing modified preferences to device"
-        if "writing modified preferences" in output or "setting range_test" in output:
-            logger.info(f"✅ Настройка применена на {identifier}")
-            return {
-                "success": True, 
-                "data": {
-                    "message": "Range Test обновлён", 
-                    "applied_value": config.range_test_enabled,
-                    "cli_output": result.get("output", "")[:300]  # Короткий вывод
-                }
-            }
-        else:
-            # Команда выполнилась, но вывод подозрительный
-            logger.warning(f"⚠️ Неоднозначный результат настройки {identifier}: {output[:200]}")
-            return {
-                "success": True,  # Считаем успешным, но с предупреждением
-                "data": {
-                    "message": "Команда отправлена (проверьте статус)",
-                    "warning": "Вывод CLI не содержит явного подтверждения",
-                    "cli_output": result.get("output", "")[:300]
-                }
-            }
+    result = []
+    if param.param_name == 'range_test_enabled':
+        result = run_meshtastic_cli(connect_args + ['--set', 'range_test.enabled', 'true' if param.bool_param else 'false'], timeout=45)
     else:
-        logger.error(f"❌ Ошибка настройки {identifier}: {result.get('error')}")
-        return {"success": False, "error": result.get("error", "Неизвестная ошибка")}
+        result = run_meshtastic_cli(connect_args + ['--set', 'network.wifi_enabled', 'true' if param.bool_param else 'false'], timeout=45)
+
+    if result["success"]:
+        logger.info(f"✅ Параметр {param.param_name} применен на {identifier}")
+        return {
+            "success": True, 
+            "data": {
+                "message": "Параметры обновлены"
+            }
+        }
+    else:
+        logger.error(f"❌ Ошибка настройки параметра {param.param_name} на {identifier}: {result.get('error')}")
+        return {
+            "success": False, 
+            "data": {
+                "message": f"Параметры не обновлены из-за ошибки: {result.get('error')}", 
+            }
+        }
 
 @app.post("/api/devices/{identifier}/reboot")
 async def reboot_device(identifier: str):
