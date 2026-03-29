@@ -16,6 +16,9 @@ import subprocess
 import shlex
 import re
 import nmap
+import asyncio
+from collections import defaultdict
+from datetime import datetime
 
 try:
     from meshtastic.serial_interface import SerialInterface
@@ -32,6 +35,9 @@ load_dotenv()
 LOGS_DIR = "logs"
 DEVICES_FILE = "devices.json"
 os.makedirs(LOGS_DIR, exist_ok=True)
+
+active_log_sessions: dict[str, dict] = {}
+LOG_BUFFER_SIZE = 1000  # Макс. количество строк в буфере на устройство
 
 if (str(os.getenv("NMAP_PATH")) not in os.environ["PATH"]):
     os.environ["PATH"] += (";"+str(os.getenv("NMAP_PATH")))
@@ -269,6 +275,51 @@ def run_meshtastic_cli(args: list, timeout: int = 30) -> dict:
     except Exception as e:
         logger.error(f"❌ Неожиданная ошибка CLI: {e}")
         return {"success": False, "error": str(e)}
+    
+async def start_meshtastic_listen(identifier: str, connect_args: list[str]):
+    """Запускает meshtastic --listen в фоне и накапливает логи"""
+    cmd = ["meshtastic"] + connect_args + ["--listen"]
+    logger.info(f"🎧 Запуск прослушивания для {identifier}: {' '.join(cmd)}")
+    
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.DEVNULL
+        )
+        
+        active_log_sessions[identifier] = {
+            "process": process,
+            "logs": [],
+            "started_at": datetime.now(),
+            "status": "running"
+        }
+        
+        # Читаем stdout в фоне
+        while process.returncode is None and active_log_sessions.get(identifier, {}).get("status") == "running":
+            line = await process.stdout.readline()
+            if not line:
+                break
+            decoded = line.decode('utf-8', errors='replace').strip()
+            if decoded:
+                # Добавляем метку времени
+                log_entry = f"[{datetime.now().isoformat()}] {decoded}"
+                # Добавляем в буфер с ограничением размера
+                buffer = active_log_sessions[identifier]["logs"]
+                buffer.append(log_entry)
+                if len(buffer) > LOG_BUFFER_SIZE:
+                    buffer.pop(0)  # Удаляем старые записи
+        
+        # Процесс завершился
+        if identifier in active_log_sessions:
+            active_log_sessions[identifier]["status"] = "stopped"
+            await process.wait()
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка в listen-сессии {identifier}: {e}")
+        if identifier in active_log_sessions:
+            active_log_sessions[identifier]["status"] = "error"
 
 # --- API Эндпоинты ---
 
@@ -644,6 +695,99 @@ async def logs():
 @app.get("/api/wifi/ips")
 async def list_wifi_ips():
     return get_available_wifi_ips()
+
+# После существующих эндпоинтов добавьте:
+
+@app.post("/api/logs/{identifier}/start")
+async def start_logging(identifier: str):
+    """Запускает запись логов для устройства"""
+    devices = load_devices()
+    device = next((d for d in devices if d.get('ip') == identifier or d.get('serial_port') == identifier), None)
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Устройство не найдено")
+    
+    # Если уже запущено — перезапускаем
+    if identifier in active_log_sessions and active_log_sessions[identifier]["status"] == "running":
+        await stop_logging_internal(identifier)
+    
+    # Аргументы подключения
+    connect_args = ["--host", device['ip']] if device['connection_type'] == 'wifi' else ["--port", device['serial_port']]
+    
+    # Запускаем в фоне
+    asyncio.create_task(start_meshtastic_listen(identifier, connect_args))
+    
+    return {"success": True, "message": f"Запись логов запущена для {identifier}"}
+
+
+async def stop_logging_internal(identifier: str):
+    """Внутренняя функция остановки записи"""
+    if identifier not in active_log_sessions:
+        return
+    session = active_log_sessions[identifier]
+    if session["status"] == "running" and session["process"]:
+        session["status"] = "stopping"
+        try:
+            session["process"].terminate()
+            await asyncio.wait_for(session["process"].wait(), timeout=5.0)
+        except:
+            session["process"].kill()  # Force kill if needed
+        logger.info(f"⏹️ Остановлена запись логов для {identifier}")
+
+
+@app.post("/api/logs/{identifier}/stop")
+async def stop_logging(identifier: str):
+    """Останавливает запись логов"""
+    await stop_logging_internal(identifier)
+    return {"success": True, "message": f"Запись логов остановлена для {identifier}"}
+
+
+@app.get("/api/logs/{identifier}")
+async def get_logs(identifier: str, lines: int = 100):
+    """Возвращает последние логи устройства"""
+    if identifier not in active_log_sessions:
+        raise HTTPException(status_code=404, detail="Сессия логов не найдена")
+    
+    session = active_log_sessions[identifier]
+    logs = session["logs"][-lines:] if lines > 0 else session["logs"]
+    
+    return {
+        "success": True,
+        "identifier": identifier,
+        "started_at": session["started_at"].isoformat(),
+        "status": session["status"],
+        "line_count": len(session["logs"]),
+        "logs": logs
+    }
+
+
+@app.get("/api/logs/{identifier}/download")
+async def download_logs(identifier: str):
+    """Скачивает логи как текстовый файл"""
+    if identifier not in active_log_sessions:
+        raise HTTPException(status_code=404, detail="Сессия логов не найдена")
+    
+    session = active_log_sessions[identifier]
+    log_content = "\n".join(session["logs"])
+    
+    filename = f"meshtastic_logs_{identifier}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    
+    # Создаём временный файл
+    temp_path = os.path.join(LOGS_DIR, filename)
+    with open(temp_path, "w", encoding="utf-8") as f:
+        # Добавляем заголовок
+        f.write(f"# Meshtastic Logs for {identifier}\n")
+        f.write(f"# Started: {session['started_at'].isoformat()}\n")
+        f.write(f"# Status: {session['status']}\n")
+        f.write("# " + "="*70 + "\n\n")
+        f.write(log_content)
+    
+    return FileResponse(
+        temp_path,
+        media_type="text/plain",
+        filename=filename,
+        background=BackgroundTasks().add_task(lambda p: os.remove(p) if os.path.exists(p) else None, temp_path)
+    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

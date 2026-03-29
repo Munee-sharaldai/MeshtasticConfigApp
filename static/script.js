@@ -58,7 +58,7 @@ function renderDevices(devices) {
             <div class="device-actions">
                 <button class="btn-small" onclick="checkStatus('${escapeHtml(identifier)}')">Статус</button>
                 <button class="btn-small" onclick="selectConfig('${escapeHtml(identifier)}')">Параметры</button>
-                <button class="btn-small" onclick="exportLog('${escapeHtml(identifier)}')">Лог</button>
+                <button class="btn-small" onclick="openLogModal('${escapeHtml(identifier)}')">Лог</button>
             </div>
             <div class="device-actions">
                 <button class="btn-small" onclick="reboot('${escapeHtml(identifier)}')">Перезагрузить</button>
@@ -650,3 +650,114 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
 }
+
+// ============================================================================
+// Управление логами
+// ============================================================================
+
+let currentLogIdentifier = null;
+let logRefreshInterval = null;
+
+function openLogModal(identifier) {
+    currentLogIdentifier = identifier;
+    document.getElementById('logModalIdentifier').textContent = identifier;
+    document.getElementById('logModal').style.display = 'block';
+    refreshLogs();
+    // Автообновление каждые 3 сек при открытом модальном окне
+    logRefreshInterval = setInterval(refreshLogs, 3000);
+}
+
+function closeLogModal() {
+    document.getElementById('logModal').style.display = 'none';
+    if (logRefreshInterval) {
+        clearInterval(logRefreshInterval);
+        logRefreshInterval = null;
+    }
+    currentLogIdentifier = null;
+}
+
+async function toggleLogRecording() {
+    if (!currentLogIdentifier) return;
+    
+    const btn = document.getElementById('logStartBtn');
+    const isRunning = btn.textContent.includes('⏹');
+    
+    try {
+        const endpoint = isRunning ? 'stop' : 'start';
+        const res = await fetch(`${API_BASE}/logs/${encodeURIComponent(currentLogIdentifier)}/${endpoint}`, {
+            method: 'POST'
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            btn.textContent = isRunning ? '▶️ Начать запись' : '⏹ Остановить запись';
+            btn.style.background = isRunning ? '#27ae60' : '#e74c3c';
+            refreshLogs();
+        } else {
+            alert('❌ ' + (data.error || 'Ошибка'));
+        }
+    } catch (e) {
+        alert('❌ Ошибка: ' + e.message);
+    }
+}
+
+async function refreshLogs() {
+    if (!currentLogIdentifier) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/logs/${encodeURIComponent(currentLogIdentifier)}?lines=200`);
+        const data = await res.json();
+        
+        const logContent = document.getElementById('logContent');
+        const logStatus = document.getElementById('logStatus');
+        const downloadBtn = document.getElementById('logDownloadBtn');
+        
+        if (data.success) {
+            logStatus.innerHTML = `
+                <strong>Статус:</strong> ${data.status} | 
+                <strong>Строк:</strong> ${data.line_count} | 
+                <strong>Начало:</strong> ${new Date(data.started_at).toLocaleString()}
+            `;
+            logContent.textContent = data.logs.join('\n') || 'Нет записей...';
+            downloadBtn.disabled = data.line_count === 0;
+            
+            // Обновляем кнопку записи
+            const startBtn = document.getElementById('logStartBtn');
+            if (data.status === 'running') {
+                startBtn.textContent = '⏹ Остановить запись';
+                startBtn.style.background = '#e74c3c';
+            } else {
+                startBtn.textContent = '▶️ Начать запись';
+                startBtn.style.background = '#27ae60';
+            }
+            
+            // Автопрокрутка вниз
+            logContent.scrollTop = logContent.scrollHeight;
+        } else {
+            logContent.textContent = '❌ ' + (data.error || 'Ошибка загрузки логов');
+            downloadBtn.disabled = true;
+        }
+    } catch (e) {
+        document.getElementById('logContent').textContent = '❌ Ошибка: ' + e.message;
+    }
+}
+
+async function downloadLogs() {
+    if (!currentLogIdentifier) return;
+    
+    // Прямая загрузка файла через браузер
+    const link = document.createElement('a');
+    link.href = `${API_BASE}/logs/${encodeURIComponent(currentLogIdentifier)}/download`;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Закрытие модального окна по клику вне контента
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('logModal');
+    if (e.target === modal) {
+        closeLogModal();
+    }
+});
