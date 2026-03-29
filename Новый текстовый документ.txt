@@ -1,0 +1,2 @@
+#https://nmap.org/download.html#windows
+NMAP_PATH="C:\Program Files (x86)\Nmap"

@@ -1,0 +1,337 @@
+/* === Базовые стили === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* === Карточки === */
+.card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    justify-content: space-between;
+}
+.card h2 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+}
+
+/* === Форма добавления === */
+.form-inline {
+    display: flex;
+    gap: 10px;
+}
+.form-inline input, .form-inline select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+}
+.form-inline input[disabled], .form-inline select[disabled] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.addingFormButtons {
+    display: flex;
+    margin-top: 10px;
+    gap: 10px; 
+    justify-content: space-between;
+    width: 100%;
+}
+
+/* === Кнопки === */
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    width: 100%;
+}
+.btn-primary { background: #007bff; color: white; }
+.btn-primary:hover { background: #0056b3; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-secondary:hover { background: #545b62; }
+.btn-warning { background: #ffc107; color: #212529; }
+.btn-warning:hover { background: #e0a800; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-danger:hover { background: #c82333; }
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin-right: 5px;
+}
+
+/* === Список устройств === */
+.devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items: start; /* Чтобы карточки не растягивались по высоте сетки */
+}
+
+.device-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    background: #fafafa;
+    height: 200px;              /* Фиксированная высота */
+    overflow-y: auto;           /* Прокрутка при переполнении */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+.device-card.wifi { border-left: 4px solid #007bff; }
+.device-card.serial { border-left: 4px solid #28a745; }
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.badge {
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+.device-info {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+.device-actions {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.card-header {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+}
+
+.cardHeaderButton {
+    width: 10%;
+}
+
+.cardHeaderText {
+    width: 100%;
+}
+
+
+/* === Форма конфигурации (упрощённая) === */
+
+.config-info {
+    background: #e7f3ff;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 3px solid #007bff;
+}
+.config-info .hint {
+    font-size: 13px;
+    color: #555;
+    margin-top: 5px;
+}
+.form-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    user-select: none;
+}
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* === Статус-индикаторы === */
+.status-indicator {
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.status-indicator.status-ok {
+    background: #d4edda;
+    color: #155724;
+}
+.status-indicator.status-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 10px 0;
+}
+.status-badge.status-on {
+    background: #d4edda;
+    color: #155724;
+}
+.status-badge.status-off {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Контейнер-обертка */
+.devicesAndConfig {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    max-height: 54vh;
+}
+
+/* Карточки */
+.devicesAndConfig .card {
+    flex: 1;
+    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 0;
+    padding-top: 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    position: relative;
+}
+
+/* Заголовок - фиксированный сверху */
+.devicesAndConfig .card h2 {
+    position: sticky;
+    top: 0;
+    margin: 0;
+    padding: 20px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    height: 100%;
+}
+
+/* Футер с кнопкой - фиксированный снизу */
+.devicesAndConfig .card .form-footer {
+    position: sticky;
+    bottom: 0;
+    margin: 0;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Кнопка */
+.devicesAndConfig .card .form-footer button {
+    width: 100%;
+    padding: 12px 24px;
+    cursor: pointer;
+}
+
+/* Стилизация скроллбара */
+.devicesAndConfig .card::-webkit-scrollbar {
+    width: 8px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.devicesAndConfig .card::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* === Логи === */
+.logs-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+    background: #fafafa;
+}
+.log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+.log-item:last-child { border-bottom: none; }
+.log-size {
+    font-size: 12px;
+    color: #888;
+    margin: 0 15px;
+}
+
+/* === Утилиты === */
+.error-message {
+    color: #721c24;
+    background: #f8d7da;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+.no-devices, .no-logs {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+    width: 100%;
+}
+
+/* === Адаптив === */
+@media (max-width: 768px) {
+    .form-inline { flex-direction: column; align-items: stretch; }
+    .form-inline input, .form-inline select { width: 100%; }
+    .devices-grid { grid-template-columns: 1fr; }
+    .device-actions { justify-content: center; }
+}

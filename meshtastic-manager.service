@@ -1,0 +1,15 @@
+[Unit]
+Description=Meshtastic WiFi Manager
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/meshtastic-manager
+Environment="PATH=/home/pi/.local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 /opt/meshtastic-manager/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
